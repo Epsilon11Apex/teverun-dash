@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teverun Dash Pro</title>
+    <title>Teverun Dash - Mini Q</title>
     <style>
         body { background: #000; color: #fff; font-family: -apple-system, sans-serif; text-align: center; padding: 15px; margin: 0; }
         .btn { background: #0A84FF; color: white; border: none; padding: 16px; font-size: 18px; border-radius: 14px; width: 100%; font-weight: bold; margin-bottom: 15px; }
@@ -16,12 +16,12 @@
         .section-title { font-size: 16px; text-align: left; margin: 15px 0 8px 5px; color: #0A84FF; font-weight: bold; }
         .led-btns { display: flex; gap: 8px; }
         .btn-led { flex: 1; padding: 12px; border: none; border-radius: 10px; color: white; font-weight: bold; font-size: 14px; cursor: pointer; }
-        #log { background: #111; color: #00ff66; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 10px; text-align: left; max-height: 140px; overflow-y: auto; margin-top: 15px; word-break: break-all; }
+        #log { background: #111; color: #00ff66; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 10px; text-align: left; max-height: 120px; overflow-y: auto; margin-top: 15px; word-break: break-all; }
     </style>
 </head>
 <body>
 
-    <button id="connectBtn" class="btn">Connecter Teverun</button>
+    <button id="connectBtn" class="btn">Connecter la Mini Q</button>
 
     <div id="dash" style="display:none;">
         <div class="grid">
@@ -32,7 +32,7 @@
             </div>
             
             <div class="card">
-                <div class="title">Tension</div>
+                <div class="title">Tension (52V)</div>
                 <div class="value" id="voltage">--.-</div>
                 <div class="unit">VOLTS</div>
             </div>
@@ -56,7 +56,7 @@
             </div>
         </div>
 
-        <div class="section-title">Contrôle LED Teverun</div>
+        <div class="section-title">LEDs TFT (Fighter Mini)</div>
         <div class="led-btns">
             <button class="btn-led" style="background: #ff3b30;" onclick="sendLedColor(255, 0, 0)">Rouge</button>
             <button class="btn-led" style="background: #30d158;" onclick="sendLedColor(0, 255, 0)">Vert</button>
@@ -65,7 +65,7 @@
         </div>
     </div>
 
-    <div id="log">> En attente de connexion...</div>
+    <div id="log">> Prêt pour la Mini Q...</div>
 
     <script>
         const SERVICE_UUID = '49535343-fe7d-4ae5-8fa9-9fafd205e455';
@@ -80,51 +80,46 @@
         async function writeToAll(data) {
             for (const char of allWriteChars) {
                 try {
-                    if (char.properties.writeWithoutResponse) {
-                        await char.writeValueWithoutResponse(data);
-                    } else {
-                        await char.writeValue(data);
-                    }
+                    if (char.properties.writeWithoutResponse) await char.writeValueWithoutResponse(data);
+                    else await char.writeValue(data);
                 } catch(e) {}
             }
         }
 
-        function parseTeverunFrame(data) {
+        // DECODAGE SPECIFIQUE FIGHTER MINI Q (52V)
+        function parseMiniQFrame(data) {
             if (data.length < 5 || data[0] !== 0x55) return;
-
             const frameType = data[1];
 
-            // Trame 0x71 / 0x72 : Télémétrie Moteurs / Contrôleurs
-            if (frameType === 0x71 || frameType === 0x72) {
-                if (data[3] !== undefined) {
-                    document.getElementById('speed').innerText = data[3];
-                }
-
-                // Température
-                for (let idx of [5, 6, 7, 11, 12]) {
-                    if (data[idx] > 10 && data[idx] < 80) {
-                        document.getElementById('temp').innerText = data[idx];
-                        break;
-                    }
-                }
-
-                // Tension corrigée (Lecture sur 16 bits divisée par 10)
+            // Trame 0x43 : Tension globale exacte de la batterie
+            if (frameType === 0x43) {
                 if (data[8] !== undefined && data[9] !== undefined) {
                     const rawVolt = (data[8] << 8) | data[9];
-                    if (rawVolt > 300 && rawVolt < 1000) {
+                    // Sécurité pour une 52V (min ~42.0V, max ~58.8V)
+                    if (rawVolt > 400 && rawVolt < 650) {
                         document.getElementById('voltage').innerText = (rawVolt / 10).toFixed(1);
                     }
                 }
             }
 
-            // Trame 0x73 : Batterie & Ampérage
-            if (frameType === 0x73) {
-                if (data[13] !== undefined && data[13] <= 100) {
-                    document.getElementById('battery').innerText = data[13];
+            // Trame 0x71 : Vitesse et Température
+            if (frameType === 0x71) {
+                if (data[3] !== undefined) document.getElementById('speed').innerText = data[3];
+                // Température à l'octet 5 (ex: 0x1E = 30°C)
+                if (data[5] !== undefined && data[5] > 0 && data[5] < 90) {
+                    document.getElementById('temp').innerText = data[5];
                 }
+            }
 
-                if (data[10] !== undefined) {
-                    let rawCurrent = data[10];
+            // Trame 0x73 : Pourcentage Batterie et Courant/Regen
+            if (frameType === 0x73) {
+                // Pourcentage à l'octet 12
+                if (data[12] !== undefined && data[12] <= 100) {
+                    document.getElementById('battery').innerText = data[12];
+                }
+                // Courant à l'octet 9 (valeur signée)
+                if (data[9] !== undefined) {
+                    let rawCurrent = data[9];
                     if (rawCurrent > 128) rawCurrent -= 256;
                     document.getElementById('current').innerText = (rawCurrent / 10).toFixed(1);
                 }
@@ -149,8 +144,7 @@
                     if (char.properties.notify || char.properties.indicate) {
                         await char.startNotifications();
                         char.addEventListener('characteristicvaluechanged', (e) => {
-                            const data = new Uint8Array(e.target.value.buffer);
-                            parseTeverunFrame(data);
+                            parseMiniQFrame(new Uint8Array(e.target.value.buffer));
                         });
                     }
                     if (char.properties.write || char.properties.writeWithoutResponse) {
@@ -160,12 +154,11 @@
 
                 document.getElementById('connectBtn').style.display = 'none';
                 document.getElementById('dash').style.display = 'block';
-                log('✓ CONNECTÉ ! Prêt.');
+                log('✓ MINI Q CONNECTÉE !');
 
-                const pollPacket = new Uint8Array([0xAA, 0x55, 0x01, 0x01, 0x00, 0x02]);
-
+                // Ping pour maintenir les données
                 setInterval(async () => {
-                    await writeToAll(pollPacket);
+                    await writeToAll(new Uint8Array([0xAA, 0x55, 0x01, 0x01, 0x00, 0x02]));
                 }, 500);
 
             } catch (err) {
@@ -173,42 +166,27 @@
             }
         });
 
-        // Test des 5 trames LED Teverun/Minimotors
+        // Trames LED dédiées à l'écran TFT Teverun
         async function sendLedColor(r, g, b) {
-            if (allWriteChars.length === 0) {
-                log("Erreur : Pas de canal d'écriture.");
-                return;
-            }
-
+            if (allWriteChars.length === 0) return;
             const calcSum = (arr) => arr.reduce((acc, v) => acc + v, 0) & 0xFF;
 
-            // Variante 1: Standard Teverun App
-            const v1_body = [0x07, 0x10, 0x03, r, g, b, 0x01];
-            const v1 = new Uint8Array([0xAA, 0x55, ...v1_body, calcSum(v1_body)]);
+            // Paquet 1 : Format TFT Display 1 (Opcode 0x10)
+            const p1_body = [0x07, 0x10, 0x03, r, g, b, 0x01];
+            const p1 = new Uint8Array([0xAA, 0x55, ...p1_body, calcSum(p1_body)]);
 
-            // Variante 2: Minimotors / TFT RGB
-            const v2_body = [0x06, 0x08, 0x01, r, g, b, 0xFF];
-            const v2 = new Uint8Array([0xA5, 0x5A, ...v2_body, calcSum(v2_body)]);
+            // Paquet 2 : Format TFT Display 2 (Opcode 0x0C)
+            const p2_body = [0x07, 0x0C, 0x03, r, g, b, 0x01];
+            const p2 = new Uint8Array([0xAA, 0x55, ...p2_body, calcSum(p2_body)]);
 
-            // Variante 3: Light Controller Board Direct
-            const v3_body = [0x05, 0x03, r, g, b];
-            const v3 = new Uint8Array([0x55, 0xAA, ...v3_body, calcSum(v3_body)]);
+            // Paquet 3 : Format Minimotors TFT (Opcode 0x08)
+            const p3_body = [0x06, 0x08, 0x01, r, g, b, 0xFF];
+            const p3 = new Uint8Array([0xA5, 0x5A, ...p3_body, calcSum(p3_body)]);
 
-            // Variante 4: Frame 0x0A Mode
-            const v4_body = [0x0A, 0x03, r, g, b, 0x00];
-            const v4 = new Uint8Array([0xAA, 0x55, ...v4_body, calcSum(v4_body)]);
-
-            // Variante 5: Simple Raw RGB
-            const v5 = new Uint8Array([0x55, 0x00, 0x03, r, g, b, (r+g+b) & 0xFF]);
-
-            const packets = [v1, v2, v3, v4, v5];
-
-            log(`--> Test LED (${r},${g},${b}) - 5 paquets...`);
-            
-            for (let i = 0; i < packets.length; i++) {
-                await writeToAll(packets[i]);
+            for (let pkt of [p1, p2, p3]) {
+                await writeToAll(pkt);
             }
-            log("✓ Paquets LED envoyés.");
+            log(`LED TFT envoyées : R=${r} G=${g} B=${b}`);
         }
     </script>
 </body>
