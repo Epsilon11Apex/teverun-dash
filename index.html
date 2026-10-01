@@ -5,40 +5,81 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teverun Dash</title>
     <style>
-        body { background: #121212; color: white; font-family: sans-serif; text-align: center; padding: 40px 20px; }
-        button { background: #0A84FF; color: white; border: none; padding: 15px 25px; font-size: 18px; border-radius: 10px; width: 100%; margin-top: 20px; }
-        #log { background: #222; margin-top: 20px; padding: 15px; border-radius: 8px; font-family: monospace; text-align: left; font-size: 12px; }
+        body { background: #121212; color: white; font-family: -apple-system, sans-serif; text-align: center; padding: 30px 15px; }
+        .btn { background: #0A84FF; color: white; border: none; padding: 15px; font-size: 18px; border-radius: 12px; width: 100%; max-width: 350px; font-weight: bold; }
+        .card { background: #1c1c1e; padding: 20px; border-radius: 16px; margin: 15px auto; max-width: 350px; }
+        .value { font-size: 48px; font-weight: bold; color: #30d158; }
+        .unit { font-size: 18px; color: #8e8e93; }
+        #log { background: #000; color: #00ff66; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 11px; text-align: left; max-height: 150px; overflow-y: auto; margin-top: 20px; }
     </style>
 </head>
 <body>
-    <h2>Test Scan Bluetooth</h2>
-    <button id="scanBtn">Lancer le Scan Tout Appareil</button>
-    <div id="log">Status: En attente...</div>
+    <h2>Teverun Dash</h2>
+    <button id="connectBtn" class="btn">Connecter la Trottinette</button>
+
+    <div id="dash" style="display:none;">
+        <div class="card">
+            <div class="unit">VITESSE</div>
+            <div class="value" id="speed">0</div>
+            <div class="unit">KM/H</div>
+        </div>
+        <div class="card">
+            <div class="unit">BATTERIE</div>
+            <div class="value" id="battery">--</div>
+            <div class="unit">%</div>
+        </div>
+    </div>
+
+    <div id="log">> Prêt pour la connexion</div>
 
     <script>
-        const scanBtn = document.getElementById('scanBtn');
-        const log = document.getElementById('log');
+        const SERVICE_UUID = '49535343-fe7d-4ae5-8fa9-9fafd205e455';
+        const RX_CHAR_UUID = '49535343-1e4d-4a9c-904e-e370a99c828d'; // Écoute
+        const TX_CHAR_UUID = '49535343-8841-43f4-a5d4-0d93e2421616'; // Écriture
 
-        function print(msg) {
-            log.innerHTML += "<br>> " + msg;
+        function log(msg) {
+            const l = document.getElementById('log');
+            l.innerHTML += '<br>> ' + msg;
+            l.scrollTop = l.scrollHeight;
         }
 
-        scanBtn.addEventListener('click', async () => {
-            log.innerHTML = "Status: Scan en cours...";
+        document.getElementById('connectBtn').addEventListener('click', async () => {
             try {
-                print("Demande d'accès Bluetooth...");
+                log('Recherche de la Teverun...');
                 const device = await navigator.bluetooth.requestDevice({
-                    acceptAllDevices: true
+                    filters: [{ namePrefix: 'T1F' }, { namePrefix: 'TEVERUN' }],
+                    optionalServices: [SERVICE_UUID]
                 });
 
-                print("Appareil sélectionné : " + device.name + " (" + device.id + ")");
-                print("Tentative de connexion GATT...");
-                
+                log('Connexion au serveur GATT...');
                 const server = await device.gatt.connect();
-                print("✓ CONNECTÉ AVEC SUCCÈS !");
 
-            } catch (error) {
-                print("Erreur : " + error.message);
+                log('Obtention du service principal...');
+                const service = await server.getPrimaryService(SERVICE_UUID);
+
+                log('Abonnement aux notifications...');
+                const rxChar = await service.getCharacteristic(RX_CHAR_UUID);
+                await rxChar.startNotifications();
+                
+                rxChar.addEventListener('characteristicvaluechanged', (e) => {
+                    const data = new Uint8Array(e.target.value.buffer);
+                    log('Trame reçue (' + data.length + ' octets) : ' + Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' '));
+                    
+                    // Décodage de base de la trame
+                    if (data.length >= 7) {
+                        const speed = data[3]; // Indice de vitesse estimé
+                        const battery = data[4]; // Indice de batterie estimé
+                        document.getElementById('speed').innerText = speed;
+                        document.getElementById('battery').innerText = battery;
+                    }
+                });
+
+                document.getElementById('connectBtn').style.display = 'none';
+                document.getElementById('dash').style.display = 'block';
+                log('✓ Abonné avec succès ! En attente de données...');
+
+            } catch (err) {
+                log('ERREUR : ' + err.message);
             }
         });
     </script>
