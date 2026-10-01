@@ -90,23 +90,25 @@
 
             const frameType = data[1];
 
-            // Trame 0x71 ou 0x72 : Télémétrie générale (Tension, Vitesse, Température)
+            // Trame 0x71/0x72 : Télémétrie
             if (frameType === 0x71 || frameType === 0x72) {
-                // Vitesse
+                // Vitesse à l'octet 3
                 if (data[3] !== undefined) {
                     document.getElementById('speed').innerText = data[3];
                 }
 
-                // Température (octet 10 en hex: 0x17 = 23°C)
-                if (data[10] !== undefined && data[10] < 100) {
-                    document.getElementById('temp').innerText = data[10];
+                // Température (octet 11 ou 12)
+                const tempVal = data[11] || data[12];
+                if (tempVal > 0 && tempVal < 90) {
+                    document.getElementById('temp').innerText = tempVal;
                 }
 
-                // Tension batterie (octets 8-9)
+                // Tension corrigée (division par 20 pour la cohérence de plage)
                 if (data[8] !== undefined && data[9] !== undefined) {
                     const rawVolt = (data[8] << 8) | data[9];
-                    if (rawVolt > 300) {
-                        document.getElementById('voltage').innerText = (rawVolt / 100).toFixed(1);
+                    const voltCalculated = (rawVolt / 200).toFixed(1);
+                    if (voltCalculated > 30 && voltCalculated < 100) {
+                        document.getElementById('voltage').innerText = voltCalculated;
                     }
                 }
             }
@@ -117,10 +119,11 @@
                     document.getElementById('battery').innerText = data[13];
                 }
 
-                // Courant (Ampères / Régénération)
+                // Courant corrigé
                 if (data[10] !== undefined) {
-                    const rawCurrent = (data[10] > 128) ? (data[10] - 256) : data[10];
-                    document.getElementById('current').innerText = (rawCurrent / 10).toFixed(1);
+                    let rawCurrent = data[10];
+                    if (rawCurrent > 128) rawCurrent -= 256;
+                    document.getElementById('current').innerText = (rawCurrent / 2).toFixed(1);
                 }
             }
         }
@@ -170,10 +173,12 @@
         async function sendLedColor(r, g, b) {
             if (!targetChar) return;
             try {
-                // Format trame LED Teverun direct (0xAA 0x55 + RGB)
-                const packet = new Uint8Array([0xAA, 0x55, 0x0A, 0x03, r, g, b, 0x00, (r + g + b) & 0xFF]);
+                // En-tête de commande LED natif Teverun (0x55 0x00) avec Checksum d'octets
+                const checksum = (0x02 + 0x03 + r + g + b) & 0xFF;
+                const packet = new Uint8Array([0x55, 0x00, 0x02, 0x03, r, g, b, checksum]);
+                
                 await writePacket(targetChar, packet);
-                log(`LED envoyées : R=${r} G=${g} B=${b}`);
+                log(`Commande LED : R=${r} G=${g} B=${b}`);
             } catch(e) {
                 log('Erreur LED: ' + e.message);
             }
