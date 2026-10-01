@@ -1,199 +1,1294 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teverun Dash - Mini Q</title>
-    <style>
-        body { background: #000; color: #fff; font-family: -apple-system, sans-serif; text-align: center; padding: 15px; margin: 0; }
-        .btn { background: #0A84FF; color: white; border: none; padding: 16px; font-size: 18px; border-radius: 14px; width: 100%; font-weight: bold; margin-bottom: 15px; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        .card { background: #1c1c1e; padding: 15px; border-radius: 14px; text-align: center; }
-        .full { grid-column: span 2; }
-        .title { font-size: 12px; color: #8e8e93; text-transform: uppercase; font-weight: 600; }
-        .value { font-size: 36px; font-weight: bold; color: #30d158; margin: 5px 0; }
-        .unit { font-size: 14px; color: #8e8e93; }
-        .section-title { font-size: 16px; text-align: left; margin: 15px 0 8px 5px; color: #0A84FF; font-weight: bold; }
-        .led-btns { display: flex; gap: 8px; }
-        .btn-led { flex: 1; padding: 12px; border: none; border-radius: 10px; color: white; font-weight: bold; font-size: 14px; cursor: pointer; }
-        #log { background: #111; color: #00ff66; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 10px; text-align: left; max-height: 120px; overflow-y: auto; margin-top: 15px; word-break: break-all; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#05070b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Teverun Dash">
+<title>TEVERUN DASH — Console BLE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  :root{
+    --bg:#04060a;
+    --panel:rgba(13,18,26,.82);
+    --panel-solid:#0b1017;
+    --line:rgba(148,163,184,.13);
+    --line-soft:rgba(148,163,184,.08);
+    --txt:#e8eef6;
+    --mut:#7d8aa0;
+    --dim:#4b586c;
+    --cyan:#22d3ee;
+    --indigo:#818cf8;
+    --pink:#e879f9;
+    --green:#34d399;
+    --lime:#a3e635;
+    --amber:#fbbf24;
+    --red:#fb5566;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+    --disp:'Michroma',sans-serif;
+    --ui:'Space Grotesk',system-ui,sans-serif;
+    --sat:env(safe-area-inset-top,0px);
+    --sab:env(safe-area-inset-bottom,0px);
+  }
+  html{height:100%}
+  body{
+    margin:0;min-height:100%;background:var(--bg);color:var(--txt);
+    font-family:var(--ui);-webkit-font-smoothing:antialiased;
+    -webkit-tap-highlight-color:transparent;overflow-x:hidden;
+    touch-action:manipulation;-webkit-text-size-adjust:100%;
+  }
+  ::selection{background:rgba(34,211,238,.3)}
+
+  /* ── Ambiance de fond ── */
+  .bgfx{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
+  .bgfx::before{content:"";position:absolute;inset:-20%;
+    background:
+      radial-gradient(42% 30% at 18% -4%, rgba(34,211,238,.13), transparent 60%),
+      radial-gradient(40% 34% at 88% 6%, rgba(129,140,248,.11), transparent 62%),
+      radial-gradient(50% 40% at 50% 110%, rgba(52,211,153,.07), transparent 65%);
+  }
+  .bg-grid{position:absolute;inset:0;opacity:.5;
+    background-image:linear-gradient(rgba(148,163,184,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,.05) 1px,transparent 1px);
+    background-size:44px 44px;
+    mask-image:radial-gradient(70% 55% at 50% 30%,#000 0%,transparent 100%);
+    -webkit-mask-image:radial-gradient(70% 55% at 50% 30%,#000 0%,transparent 100%);
+  }
+
+  .wrap{max-width:480px;margin:0 auto;box-sizing:border-box;
+    padding:calc(var(--sat) + 10px) 16px calc(var(--sab) + 118px)}
+
+  /* ── Barre supérieure ── */
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:6px 2px 14px}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand-mark{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;
+    background:linear-gradient(135deg,rgba(34,211,238,.22),rgba(129,140,248,.22));
+    border:1px solid rgba(34,211,238,.35);color:var(--cyan);
+    box-shadow:0 0 24px rgba(34,211,238,.25), inset 0 1px 0 rgba(255,255,255,.08)}
+  .brand-mark svg{width:19px;height:19px}
+  .brand h1{margin:0;font-family:var(--disp);font-size:13px;letter-spacing:.14em;font-weight:400}
+  .brand h1 em{font-style:normal;color:var(--cyan)}
+  .brand small{display:block;font-family:var(--ui);font-size:9.5px;letter-spacing:.24em;color:var(--dim);margin-top:3px;text-transform:uppercase}
+  .top-actions{display:flex;align-items:center;gap:8px}
+  .icon-btn{width:38px;height:38px;border-radius:12px;border:1px solid var(--line);
+    background:rgba(13,18,26,.7);color:var(--mut);display:grid;place-items:center;cursor:pointer;
+    transition:.18s ease;-webkit-appearance:none;appearance:none;padding:0}
+  .icon-btn:active{transform:scale(.92)}
+  .icon-btn svg{width:17px;height:17px}
+  .icon-btn.alert{color:var(--red);border-color:rgba(251,85,102,.35)}
+  .pill{display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:999px;
+    border:1px solid var(--line);background:rgba(13,18,26,.7);
+    font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--mut)}
+  .pill .dot{width:7px;height:7px;border-radius:50%;background:var(--dim);transition:.25s}
+  .pill.on{color:var(--green);border-color:rgba(52,211,153,.35)}
+  .pill.on .dot{background:var(--green);box-shadow:0 0 10px var(--green);animation:pulse 2s infinite}
+  .pill.busy{color:var(--amber);border-color:rgba(251,191,36,.35)}
+  .pill.busy .dot{background:var(--amber);box-shadow:0 0 10px var(--amber);animation:pulse 1s infinite}
+  .pill.demo{color:var(--pink);border-color:rgba(232,121,249,.35)}
+  .pill.demo .dot{background:var(--pink);box-shadow:0 0 10px var(--pink);animation:pulse 2s infinite}
+  @keyframes pulse{50%{opacity:.35}}
+
+  /* ── Écran de connexion ── */
+  .hero{display:flex;flex-direction:column;align-items:center;text-align:center;
+    padding:9vh 8px 40px}
+  .hero-orb{position:relative;width:158px;height:158px;margin-bottom:34px;display:grid;place-items:center}
+  .hero-orb .core{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;
+    background:radial-gradient(circle at 32% 28%, #101a26, #070b11 70%);
+    border:1px solid rgba(34,211,238,.4);color:var(--cyan);position:relative;z-index:2;
+    box-shadow:0 0 46px rgba(34,211,238,.3), inset 0 0 26px rgba(34,211,238,.12)}
+  .hero-orb .core svg{width:42px;height:42px}
+  .hero-orb .ring{position:absolute;inset:0;border-radius:50%;border:1px dashed rgba(125,138,160,.35);
+    animation:spin 22s linear infinite}
+  .hero-orb .ring::after{content:"";position:absolute;top:-3px;left:50%;width:6px;height:6px;border-radius:50%;
+    background:var(--cyan);box-shadow:0 0 12px var(--cyan)}
+  .hero-orb .halo{position:absolute;inset:18%;border-radius:50%;border:1px solid rgba(34,211,238,.16);
+    animation:breathe 3.4s ease-in-out infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes breathe{50%{transform:scale(1.14);opacity:.4}}
+  .hero h2{margin:0 0 10px;font-family:var(--disp);font-size:21px;font-weight:400;letter-spacing:.06em;line-height:1.45}
+  .hero h2 em{font-style:normal;background:linear-gradient(90deg,var(--cyan),var(--indigo),var(--pink));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .hero p{margin:0 0 6px;color:var(--mut);font-size:13.5px;line-height:1.65;max-width:320px}
+  .hero .fin{margin-top:2px;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--dim)}
+  .cta{position:relative;margin-top:32px;border:none;cursor:pointer;border-radius:999px;
+    padding:2px;background:transparent;isolation:isolate}
+  .cta::before{content:"";position:absolute;inset:-2px;border-radius:999px;z-index:-2;
+    background:conic-gradient(from var(--a,0deg),var(--cyan),var(--indigo),var(--pink),var(--cyan));
+    animation:cta-rot 3.6s linear infinite;filter:blur(1px)}
+  .cta::after{content:"";position:absolute;inset:-14px;border-radius:999px;z-index:-3;opacity:.5;
+    background:conic-gradient(from var(--a,0deg),var(--cyan),var(--indigo),var(--pink),var(--cyan));
+    animation:cta-rot 3.6s linear infinite;filter:blur(22px)}
+  @property --a{syntax:'<angle>';initial-value:0deg;inherits:false}
+  @keyframes cta-rot{to{--a:360deg}}
+  .cta-inner{display:flex;align-items:center;gap:10px;padding:17px 34px;border-radius:999px;
+    background:#050a12;color:var(--txt);font-family:var(--ui);font-weight:700;font-size:13.5px;
+    letter-spacing:.22em;text-transform:uppercase}
+  .cta svg{width:17px;height:17px;color:var(--cyan)}
+  .cta:active .cta-inner{transform:scale(.965)}
+  .cta-inner{transition:transform .15s ease}
+  .cta:disabled{opacity:.5}
+  .subbtn{margin-top:18px;background:none;border:none;color:var(--dim);font-family:var(--ui);
+    font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;
+    display:flex;align-items:center;gap:7px;padding:10px}
+  .subbtn svg{width:13px;height:13px}
+  .subbtn:active{color:var(--mut)}
+  .warn-box{margin-top:26px;max-width:330px;border:1px solid rgba(251,191,36,.3);
+    background:rgba(251,191,36,.06);border-radius:16px;padding:14px 16px;text-align:left;
+    font-size:12.5px;color:#f3d9a0;line-height:1.6;display:none}
+  .warn-box.show{display:block}
+  .warn-box b{color:var(--amber)}
+
+  /* ── Tableau de bord ── */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:24px;
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 18px 40px -22px rgba(0,0,0,.8);
+    box-sizing:border-box;position:relative;overflow:hidden}
+  .card + .card{margin-top:14px}
+  .card-h{display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:16px 18px 0}
+  .card-h .lbl{display:flex;align-items:center;gap:8px;font-size:10px;font-weight:700;
+    letter-spacing:.22em;text-transform:uppercase;color:var(--dim)}
+  .card-h .lbl svg{width:13px;height:13px;color:var(--mut)}
+
+  /* Jauge vitesse */
+  .gauge-card{padding-bottom:6px}
+  .gauge-card .modechip{position:absolute;top:16px;right:18px;display:flex;gap:6px;z-index:3}
+  .chip{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.08em;
+    padding:5px 9px;border-radius:8px;border:1px solid var(--line);color:var(--mut);
+    background:rgba(5,8,13,.6)}
+  .chip.g{color:var(--cyan);border-color:rgba(34,211,238,.4);text-shadow:0 0 8px rgba(34,211,238,.6)}
+  .chip.limit{color:var(--amber);border-color:rgba(251,191,36,.35)}
+  .gauge-box{position:relative;margin-top:2px}
+  .gauge-box svg{display:block;width:100%;height:auto}
+  .g-track{fill:none;stroke:rgba(148,163,184,.1);stroke-width:13;stroke-linecap:round}
+  .g-prog{fill:none;stroke:url(#gradSpeed);stroke-width:13;stroke-linecap:round;
+    filter:drop-shadow(0 0 10px rgba(34,211,238,.45));transition:filter .4s}
+  .gauge-card.regen .g-prog{stroke:url(#gradRegen);filter:drop-shadow(0 0 12px rgba(52,211,153,.6))}
+  .g-tick{stroke:rgba(148,163,184,.25);stroke-width:1.4}
+  .g-tick.major{stroke:rgba(226,232,240,.55);stroke-width:2}
+  .g-lab{fill:var(--dim);font-family:var(--mono);font-size:9.5px;font-weight:500;text-anchor:middle}
+  .g-needle{stroke:#f8fafc;stroke-width:2.6;stroke-linecap:round;
+    filter:drop-shadow(0 0 6px rgba(255,255,255,.7))}
+  .gauge-card.regen .g-needle{stroke:var(--green)}
+  .g-hub{fill:#0a0f16;stroke:rgba(226,232,240,.3);stroke-width:1.5}
+  .g-center{position:absolute;left:0;right:0;top:42%;pointer-events:none;text-align:center}
+  .g-speed{font-family:var(--disp);font-size:60px;line-height:1;letter-spacing:.02em;
+    text-shadow:0 0 34px rgba(34,211,238,.35)}
+  .gauge-card.regen .g-speed{text-shadow:0 0 34px rgba(52,211,153,.45)}
+  .g-unit{margin-top:9px;font-size:10px;font-weight:700;letter-spacing:.42em;color:var(--dim);
+    text-transform:uppercase;padding-left:.42em}
+  .regen-badge{position:absolute;left:50%;transform:translateX(-50%);bottom:16px;z-index:3;
+    display:none;align-items:center;gap:7px;padding:7px 14px;border-radius:999px;
+    background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.45);color:var(--green);
+    font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
+    animation:pulse 1.1s infinite;white-space:nowrap}
+  .regen-badge svg{width:12px;height:12px}
+  .gauge-card.regen .regen-badge{display:inline-flex}
+  .power-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    border-top:1px solid var(--line-soft);margin:4px 14px 0;padding:12px 6px 14px}
+  .pf-item{display:flex;flex-direction:column;gap:3px;min-width:0}
+  .pf-item .k{font-size:9px;font-weight:700;letter-spacing:.2em;color:var(--dim);text-transform:uppercase}
+  .pf-item .v{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--txt);white-space:nowrap}
+  .pf-item .v small{font-size:10px;color:var(--mut);font-weight:500}
+  .pf-item.right{text-align:right}
+
+  /* Carte batterie */
+  .bat-body{display:flex;align-items:center;gap:18px;padding:14px 18px 18px}
+  .soc-ring{position:relative;width:104px;height:104px;flex:none}
+  .soc-ring svg{width:104px;height:104px;transform:rotate(-90deg)}
+  .soc-ring .tr{fill:none;stroke:rgba(148,163,184,.12);stroke-width:8}
+  .soc-ring .pr{fill:none;stroke:url(#gradBat);stroke-width:8;stroke-linecap:round;
+    filter:drop-shadow(0 0 8px rgba(52,211,153,.4));transition:stroke-dashoffset .6s cubic-bezier(.22,1,.36,1)}
+  .soc-txt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .soc-txt b{font-family:var(--mono);font-size:25px;font-weight:700;letter-spacing:-.02em}
+  .soc-txt span{font-size:8.5px;letter-spacing:.26em;color:var(--dim);text-transform:uppercase;font-weight:700;margin-top:2px}
+  .bat-rows{flex:1;display:flex;flex-direction:column;gap:11px;min-width:0}
+  .b-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .b-row .k{display:flex;align-items:center;gap:8px;font-size:10px;font-weight:700;
+    letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+  .b-row .k svg{width:13px;height:13px;color:var(--mut);flex:none}
+  .b-row .v{font-family:var(--mono);font-size:16.5px;font-weight:600;white-space:nowrap}
+  .b-row .v small{font-size:10px;color:var(--mut)}
+  .b-row .v.green{color:var(--green);text-shadow:0 0 14px rgba(52,211,153,.5)}
+  .b-row .v.cyan{color:var(--cyan)}
+
+  /* Grille de tuiles */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+  @media(min-width:430px){.grid{grid-template-columns:repeat(3,1fr)}}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:20px;
+    padding:14px 15px 13px;box-sizing:border-box;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.04);position:relative;overflow:hidden}
+  .tile .tk{display:flex;align-items:center;gap:7px;font-size:9px;font-weight:700;
+    letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin-bottom:9px}
+  .tile .tk svg{width:12px;height:12px;color:var(--mut)}
+  .tile .tv{font-family:var(--mono);font-size:21px;font-weight:600;letter-spacing:-.02em;
+    display:flex;align-items:baseline;gap:5px;white-space:nowrap}
+  .tile .tv small{font-size:10px;color:var(--mut);font-weight:500;letter-spacing:.06em}
+  .tile.hot .tv{color:var(--red);text-shadow:0 0 16px rgba(251,85,102,.55)}
+  .tile.hot{border-color:rgba(251,85,102,.4);animation:pulse 1.4s infinite}
+
+  /* LEDs */
+  .led-body{padding:16px 18px 18px}
+  .led-row{display:flex;gap:11px;justify-content:space-between}
+  .led-btn{flex:1;aspect-ratio:1/1;max-width:62px;border-radius:18px;cursor:pointer;
+    border:1px solid rgba(148,163,184,.3);
+    background:rgba(148,163,184,.08);
+    border:1px solid color-mix(in srgb,var(--c) 55%, transparent);
+    background:color-mix(in srgb,var(--c) 14%, rgba(8,12,18,.9));
+    color:var(--c);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+    font-family:var(--ui);font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    transition:.18s ease;-webkit-appearance:none;appearance:none;padding:0;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+  .led-btn svg{width:16px;height:16px}
+  .led-btn:active{transform:scale(.9)}
+  .led-btn.on{background:rgba(148,163,184,.2);
+    background:color-mix(in srgb,var(--c) 30%, rgba(8,12,18,.9));
+    box-shadow:0 0 22px color-mix(in srgb,var(--c) 55%, transparent), inset 0 1px 0 rgba(255,255,255,.1)}
+  .led-custom{display:flex;gap:10px;margin-top:13px;align-items:stretch}
+  .led-custom input[type=color]{width:56px;border-radius:14px;border:1px solid var(--line);
+    background:rgba(8,12,18,.9);padding:4px;cursor:pointer;-webkit-appearance:none;appearance:none}
+  .led-custom input[type=color]::-webkit-color-swatch-wrapper{padding:2px}
+  .led-custom input[type=color]::-webkit-color-swatch{border-radius:9px;border:none}
+  .btn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:14px;
+    border:1px solid rgba(34,211,238,.4);background:rgba(34,211,238,.1);color:var(--cyan);
+    font-family:var(--ui);font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+    cursor:pointer;transition:.15s;padding:12px;-webkit-appearance:none;appearance:none}
+  .btn:active{transform:scale(.96)}
+  .btn svg{width:14px;height:14px}
+  .led-note{margin:12px 2px 0;font-size:10.5px;color:var(--dim);line-height:1.55}
+  .headlight-dot{display:inline-flex;align-items:center;gap:6px;font-size:9.5px;font-weight:700;
+    letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+  .headlight-dot i{width:8px;height:8px;border-radius:50%;background:var(--dim);display:inline-block;transition:.3s}
+  .headlight-dot.on{color:var(--amber)}
+  .headlight-dot.on i{background:var(--amber);box-shadow:0 0 10px var(--amber)}
+
+  .footer{margin:22px 6px 6px;font-size:9.5px;color:var(--dim);line-height:1.7;letter-spacing:.04em}
+
+  /* ── Console repliable ── */
+  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;justify-content:center;
+    pointer-events:none}
+  .sheet-inner{width:100%;max-width:480px;background:#080c12;
+    border:1px solid var(--line);border-bottom:none;border-radius:22px 22px 0 0;
+    box-shadow:0 -18px 50px -12px rgba(0,0,0,.85);pointer-events:auto;
+    transform:translateY(calc(100% - 54px - var(--sab)));transition:transform .34s cubic-bezier(.32,.72,.28,1);
+    display:flex;flex-direction:column;height:min(66vh,560px);padding-bottom:var(--sab);box-sizing:border-box}
+  .sheet.open .sheet-inner{transform:translateY(0)}
+  .sheet-bar{flex:none;display:flex;align-items:center;gap:10px;padding:0 14px;height:54px;
+    cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:none}
+  .sheet-grip{position:absolute;top:7px;left:50%;transform:translateX(-50%);width:38px;height:4px;
+    border-radius:99px;background:rgba(148,163,184,.25)}
+  .sheet-bar .t{display:flex;align-items:center;gap:8px;font-size:10.5px;font-weight:700;
+    letter-spacing:.22em;text-transform:uppercase;color:var(--mut)}
+  .sheet-bar .t svg{width:14px;height:14px;color:var(--cyan)}
+  .sheet-bar .cnts{margin-left:auto;display:flex;gap:6px;font-family:var(--mono);font-size:9px}
+  .sheet-bar .cnts span{padding:4px 8px;border-radius:7px;background:rgba(148,163,184,.08);color:var(--dim);letter-spacing:.06em}
+  .sheet-tools{flex:none;display:flex;gap:8px;padding:8px 14px;border-top:1px solid var(--line-soft)}
+  .mini{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 6px;
+    border-radius:10px;border:1px solid var(--line);background:rgba(148,163,184,.05);
+    color:var(--mut);font-family:var(--ui);font-size:9.5px;font-weight:700;letter-spacing:.14em;
+    text-transform:uppercase;cursor:pointer;-webkit-appearance:none;appearance:none}
+  .mini svg{width:12px;height:12px}
+  .mini:active{transform:scale(.95)}
+  .mini.on{color:var(--cyan);border-color:rgba(34,211,238,.4);background:rgba(34,211,238,.08)}
+  .log{flex:1;overflow-y:auto;padding:6px 14px 10px;font-family:var(--mono);font-size:10.5px;
+    line-height:1.75;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  .log::-webkit-scrollbar{width:3px}
+  .log::-webkit-scrollbar-thumb{background:rgba(148,163,184,.25);border-radius:99px}
+  .log-line{display:flex;gap:8px;white-space:pre-wrap;word-break:break-all}
+  .log-line .lt{color:var(--dim);flex:none}
+  .log-line .dir{flex:none;width:34px;font-weight:700}
+  .log-line.rx .dir{color:var(--cyan)}
+  .log-line.tx .dir{color:var(--amber)}
+  .log-line.sys .dir{color:var(--indigo)}
+  .log-line.rx .msg{color:#9adbe8}
+  .log-line.tx .msg{color:#e8c98a}
+  .log-line.sys .msg{color:#aab6d8}
+  .log-line.dec .dir{color:var(--green)}
+  .log-line.dec .msg{color:#8fd8b4}
+  .log-send{flex:none;display:flex;gap:8px;padding:10px 14px 12px;border-top:1px solid var(--line-soft)}
+  .log-send input{flex:1;min-width:0;background:rgba(148,163,184,.07);border:1px solid var(--line);
+    border-radius:11px;color:var(--txt);font-family:var(--mono);font-size:11.5px;padding:10px 12px;
+    outline:none;-webkit-appearance:none;appearance:none}
+  .log-send input:focus{border-color:rgba(34,211,238,.5)}
+  .log-send .crc-check{display:flex;align-items:center;gap:5px;font-size:9px;color:var(--dim);
+    font-weight:700;letter-spacing:.08em;flex:none}
+  .log-send .crc-check input{accent-color:var(--cyan);width:14px;height:14px}
+
+  /* ── Réglages ── */
+  .modal{position:fixed;inset:0;z-index:80;display:none;align-items:flex-end;justify-content:center;
+    background:rgba(2,4,7,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+  .modal.show{display:flex}
+  .modal-box{width:100%;max-width:480px;max-height:88vh;overflow-y:auto;background:#0a0f16;
+    border:1px solid var(--line);border-radius:26px 26px 0 0;padding:8px 20px calc(var(--sab) + 22px);
+    box-sizing:border-box;-webkit-overflow-scrolling:touch}
+  .modal-h{position:sticky;top:0;background:linear-gradient(#0a0f16 75%, transparent);z-index:2;
+    display:flex;align-items:center;justify-content:space-between;padding:14px 0 12px}
+  .modal-h h3{margin:0;font-family:var(--disp);font-size:13px;font-weight:400;letter-spacing:.16em}
+  .set-sec{margin-top:14px}
+  .set-sec .st{font-size:9.5px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;
+    color:var(--cyan);margin:0 2px 10px}
+  .set-row{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:12px 2px;border-bottom:1px solid var(--line-soft)}
+  .set-row:last-child{border-bottom:none}
+  .set-row .lab{font-size:12.5px;color:var(--txt);font-weight:500;line-height:1.4}
+  .set-row .lab small{display:block;font-size:10px;color:var(--dim);margin-top:2px;line-height:1.5}
+  .switch{position:relative;width:44px;height:25px;flex:none;cursor:pointer}
+  .switch input{opacity:0;width:0;height:0;position:absolute}
+  .switch i{position:absolute;inset:0;border-radius:99px;background:rgba(148,163,184,.18);transition:.25s;
+    border:1px solid var(--line)}
+  .switch i::after{content:"";position:absolute;top:2.5px;left:3px;width:18px;height:18px;border-radius:50%;
+    background:#8b98ab;transition:.25s}
+  .switch input:checked + i{background:rgba(34,211,238,.25);border-color:rgba(34,211,238,.5)}
+  .switch input:checked + i::after{transform:translateX(18px);background:var(--cyan);
+    box-shadow:0 0 10px rgba(34,211,238,.6)}
+  .num-in{width:70px;flex:none;background:rgba(148,163,184,.07);border:1px solid var(--line);
+    border-radius:10px;color:var(--txt);font-family:var(--mono);font-size:12.5px;padding:9px 10px;
+    text-align:center;outline:none;-webkit-appearance:none;appearance:none}
+  .num-in:focus{border-color:rgba(34,211,238,.5)}
+  .off-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:4px}
+  .off-item{background:rgba(148,163,184,.05);border:1px solid var(--line);border-radius:13px;padding:10px 12px}
+  .off-item label{display:block;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--dim);margin-bottom:7px}
+  .off-item input{width:100%;box-sizing:border-box;background:rgba(5,8,12,.7);border:1px solid var(--line);
+    border-radius:8px;color:var(--txt);font-family:var(--mono);font-size:12px;padding:8px;text-align:center;
+    outline:none;-webkit-appearance:none;appearance:none}
+  .btn-danger{width:100%;margin-top:18px;display:flex;align-items:center;justify-content:center;gap:8px;
+    padding:13px;border-radius:14px;border:1px solid rgba(251,85,102,.4);background:rgba(251,85,102,.08);
+    color:var(--red);font-family:var(--ui);font-size:11px;font-weight:700;letter-spacing:.16em;
+    text-transform:uppercase;cursor:pointer;-webkit-appearance:none;appearance:none}
+  .info-line{display:flex;justify-content:space-between;gap:10px;padding:9px 2px;font-size:11.5px;
+    border-bottom:1px solid var(--line-soft)}
+  .info-line span{color:var(--dim)}
+  .info-line b{font-family:var(--mono);font-weight:500;color:var(--txt);text-align:right;word-break:break-all}
+
+  /* Toasts */
+  #toasts{position:fixed;top:calc(var(--sat) + 12px);left:50%;transform:translateX(-50%);
+    z-index:100;display:flex;flex-direction:column;gap:8px;width:min(92vw,400px);pointer-events:none}
+  .toast{background:#101720;border:1px solid var(--line);border-radius:14px;padding:12px 16px;
+    font-size:12px;line-height:1.5;box-shadow:0 14px 40px -10px rgba(0,0,0,.9);
+    animation:tin .3s cubic-bezier(.22,1,.36,1);display:flex;gap:9px;align-items:flex-start}
+  .toast.err{border-color:rgba(251,85,102,.5);color:#f6c8cd}
+  .toast.ok{border-color:rgba(52,211,153,.5);color:#c2ecd9}
+  .toast svg{width:15px;height:15px;flex:none;margin-top:1px}
+  .toast.err svg{color:var(--red)}.toast.ok svg{color:var(--green)}
+  @keyframes tin{from{opacity:0;transform:translateY(-12px)}}
+
+  .fade{animation:fade .5s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(10px)}}
+  [hidden]{display:none !important}
+</style>
 </head>
 <body>
+<div class="bgfx"><div class="bg-grid"></div></div>
+<div id="toasts"></div>
 
-    <button id="connectBtn" class="btn">Connecter la Mini Q</button>
+<div class="wrap">
+  <!-- BARRE SUPÉRIEURE -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark"><i data-lucide="zap"></i></div>
+      <h1>TEVERUN<em>DASH</em><small>BLE Console · iOS</small></h1>
+    </div>
+    <div class="top-actions">
+      <div class="pill" id="statusPill"><span class="dot"></span><span id="statusTxt">Hors ligne</span></div>
+      <button class="icon-btn" id="btnSettings" title="Réglages"><i data-lucide="settings"></i></button>
+      <button class="icon-btn alert" id="btnDisconnect" title="Déconnexion" hidden><i data-lucide="bluetooth-off"></i></button>
+    </div>
+  </div>
 
-    <div id="dash" style="display:none;">
-        <div class="grid">
-            <div class="card full">
-                <div class="title">Vitesse</div>
-                <div class="value" id="speed" style="font-size: 56px;">0</div>
-                <div class="unit">KM/H</div>
-            </div>
-            
-            <div class="card">
-                <div class="title">Tension (52V)</div>
-                <div class="value" id="voltage">--.-</div>
-                <div class="unit">VOLTS</div>
-            </div>
+  <!-- ÉCRAN DE CONNEXION -->
+  <main id="viewConnect" class="fade">
+    <div class="hero">
+      <div class="hero-orb">
+        <div class="ring"></div><div class="halo"></div>
+        <div class="core"><i data-lucide="bluetooth"></i></div>
+      </div>
+      <h2>TABLEAU DE BORD<br><em>TEMPS RÉEL</em></h2>
+      <p>Vitesse, tension, courant, régénération, températures et contrôle de l'éclairage RGB — en direct du VCU de votre Teverun.</p>
+      <div class="fin" id="finHint">CIBLE : T1FR106FQA25I013</div>
+      <button class="cta" id="btnConnect">
+        <span class="cta-inner"><i data-lucide="bluetooth"></i>Connecter</span>
+      </button>
+      <button class="subbtn" id="btnDemo"><i data-lucide="play"></i>Essayer en mode démo</button>
+      <div class="warn-box" id="bleWarn">
+        <b>Web Bluetooth introuvable.</b><br>
+        Sur iPhone, ouvrez cette page dans le navigateur <b>Bluefy</b> (ou un navigateur compatible Web BLE), en HTTPS.
+      </div>
+    </div>
+  </main>
 
-            <div class="card">
-                <div class="title">Batterie</div>
-                <div class="value" id="battery">--</div>
-                <div class="unit">%</div>
-            </div>
-
-            <div class="card">
-                <div class="title">Courant / Regen</div>
-                <div class="value" id="current" style="color: #ff9f0a;">0.0</div>
-                <div class="unit">AMPÈRES</div>
-            </div>
-
-            <div class="card">
-                <div class="title">Température</div>
-                <div class="value" id="temp" style="color: #ff453a;">--</div>
-                <div class="unit">°C</div>
-            </div>
+  <!-- TABLEAU DE BORD -->
+  <main id="viewDash" class="fade" hidden>
+    <!-- JAUGE VITESSE -->
+    <section class="card gauge-card" id="gaugeCard">
+      <div class="card-h">
+        <div class="lbl"><i data-lucide="gauge"></i>Vitesse</div>
+      </div>
+      <div class="modechip">
+        <span class="chip" id="chipPark" hidden>P</span>
+        <span class="chip g" id="chipGear">—</span>
+        <span class="chip limit" id="chipLimit" hidden></span>
+      </div>
+      <div class="gauge-box">
+        <svg viewBox="0 0 320 205" id="gaugeSvg">
+          <defs>
+            <linearGradient id="gradSpeed" gradientUnits="userSpaceOnUse" x1="30" y1="0" x2="290" y2="0">
+              <stop offset="0" stop-color="#22d3ee"/><stop offset=".5" stop-color="#818cf8"/><stop offset="1" stop-color="#e879f9"/>
+            </linearGradient>
+            <linearGradient id="gradRegen" gradientUnits="userSpaceOnUse" x1="30" y1="0" x2="290" y2="0">
+              <stop offset="0" stop-color="#34d399"/><stop offset="1" stop-color="#a3e635"/>
+            </linearGradient>
+          </defs>
+          <g id="ticks"></g>
+          <path id="arcTrack" class="g-track"/>
+          <path id="arcProg" class="g-prog"/>
+          <line id="needle" class="g-needle" x1="160" y1="165" x2="160" y2="58"/>
+          <circle class="g-hub" cx="160" cy="165" r="7"/>
+        </svg>
+        <div class="g-center">
+          <div class="g-speed" id="vSpeed">0</div>
+          <div class="g-unit" id="vUnit">km/h</div>
         </div>
+        <div class="regen-badge"><i data-lucide="recycle"></i><span id="regenTxt">Régénération</span></div>
+      </div>
+      <div class="power-foot">
+        <div class="pf-item"><span class="k">Puissance</span><span class="v" id="vPower">0 <small>W</small></span></div>
+        <div class="pf-item right"><span class="k">V-Moy / Max</span><span class="v" id="vAvgMax">— / —</span></div>
+      </div>
+    </section>
 
-        <div class="section-title">LEDs (Shotgun Mode)</div>
-        <div class="led-btns">
-            <button class="btn-led" style="background: #ff3b30;" onclick="sendLedColor(255, 0, 0)">Rouge</button>
-            <button class="btn-led" style="background: #30d158;" onclick="sendLedColor(0, 255, 0)">Vert</button>
-            <button class="btn-led" style="background: #0a84ff;" onclick="sendLedColor(0, 0, 255)">Bleu</button>
-            <button class="btn-led" style="background: #bf5af2;" onclick="sendLedColor(255, 0, 255)">Violet</button>
+    <!-- BATTERIE -->
+    <section class="card">
+      <div class="card-h"><div class="lbl"><i data-lucide="battery-charging"></i>Batterie</div></div>
+      <div class="bat-body">
+        <div class="soc-ring">
+          <svg viewBox="0 0 104 104">
+            <defs>
+              <linearGradient id="gradBat" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="104" y2="104">
+                <stop offset="0" stop-color="#a3e635"/><stop offset="1" stop-color="#22d3ee"/>
+              </linearGradient>
+            </defs>
+            <circle class="tr" cx="52" cy="52" r="44"/>
+            <circle class="pr" id="socArc" cx="52" cy="52" r="44"/>
+          </svg>
+          <div class="soc-txt"><b id="vSoc">—</b><span>%</span></div>
         </div>
+        <div class="bat-rows">
+          <div class="b-row"><span class="k"><i data-lucide="zap"></i>Tension</span><span class="v cyan" id="vVolt">— <small>V</small></span></div>
+          <div class="b-row"><span class="k"><i data-lucide="activity"></i>Courant</span><span class="v" id="vCur">— <small>A</small></span></div>
+          <div class="b-row"><span class="k"><i data-lucide="thermometer"></i>Batt. temp</span><span class="v" id="vBatTemp">— <small>°C</small></span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TUILES -->
+    <div class="grid">
+      <div class="tile" id="tileCtrlTemp"><div class="tk"><i data-lucide="thermometer"></i>Contrôleur</div><div class="tv"><span id="vCtrlTemp">—</span><small>°C</small></div></div>
+      <div class="tile"><div class="tk"><i data-lucide="route"></i>Trip</div><div class="tv"><span id="vTrip">—</span><small>km</small></div></div>
+      <div class="tile"><div class="tk"><i data-lucide="flag-checkered"></i>Odomètre</div><div class="tv"><span id="vOdo">—</span><small>km</small></div></div>
+      <div class="tile"><div class="tk"><i data-lucide="recycle"></i>Régén cumulée</div><div class="tv"><span id="vRegenCum">—</span><small>Wh*</small></div></div>
+      <div class="tile"><div class="tk"><i data-lucide="timer"></i>Régén instant.</div><div class="tv"><span id="vRegenNow">0.0</span><small>A</small></div></div>
+      <div class="tile"><div class="tk"><i data-lucide="signal"></i>Trames</div><div class="tv"><span id="vFrames">0</span><small id="vFrameRate">0/s</small></div></div>
     </div>
 
-    <div id="log">> Prêt...</div>
+    <!-- LEDS -->
+    <section class="card" style="margin-top:14px">
+      <div class="card-h">
+        <div class="lbl"><i data-lucide="lightbulb"></i>Éclairage RGB</div>
+        <span class="headlight-dot" id="headDot"><i></i>Phare</span>
+      </div>
+      <div class="led-body">
+        <div class="led-row">
+          <button class="led-btn" data-led="off"    style="--c:#64748b"><i data-lucide="power"></i>OFF</button>
+          <button class="led-btn" data-led="red"    style="--c:#fb4d5e"><i data-lucide="lightbulb"></i>Rouge</button>
+          <button class="led-btn" data-led="green"  style="--c:#34d399"><i data-lucide="lightbulb"></i>Vert</button>
+          <button class="led-btn" data-led="blue"   style="--c:#38bdf8"><i data-lucide="lightbulb"></i>Bleu</button>
+          <button class="led-btn" data-led="violet" style="--c:#a855f7"><i data-lucide="lightbulb"></i>Violet</button>
+        </div>
+        <div class="led-custom">
+          <input type="color" id="ledColor" value="#ff8800">
+          <button class="btn" id="btnLedCustom"><i data-lucide="send"></i>Couleur libre</button>
+        </div>
+        <p class="led-note">Trame <span style="font-family:var(--mono)">AA 08 [on] [mode] [R G B] … CRC8</span> · mode réglable dans les paramètres.</p>
+      </div>
+    </section>
 
-    <script>
-        const SERVICE_UUID = '49535343-fe7d-4ae5-8fa9-9fafd205e455';
-        let allWriteChars = [];
+    <p class="footer">
+      TEVERUN DASH v1.0 · Protocole VCU 20 octets, CRC-8/ATM, trames 55 41–73 ·
+      Décodage établi d'après le protocole Teverun documenté publiquement (crédit : projet « Laufbursche Edition », PolyForm NC).
+      * unité régén non certifiée par le fabricant.
+    </p>
+  </main>
+</div>
 
-        function log(msg) {
-            const l = document.getElementById('log');
-            l.innerHTML += '<br>> ' + msg;
-            l.scrollTop = l.scrollHeight;
-        }
+<!-- CONSOLE -->
+<div class="sheet" id="sheet">
+  <div class="sheet-inner">
+    <div class="sheet-bar" id="sheetBar">
+      <div class="sheet-grip"></div>
+      <span class="t"><i data-lucide="terminal"></i>Console</span>
+      <div class="cnts"><span id="rxCnt">RX 0</span><span id="txCnt">TX 0</span></div>
+      <span class="t" id="sheetChevron"><i data-lucide="chevron-up"></i></span>
+    </div>
+    <div class="sheet-tools">
+      <button class="mini" id="btnPause"><i data-lucide="pause"></i>Pause</button>
+      <button class="mini" id="btnScroll"><i data-lucide="chevron-down"></i>Défilement</button>
+      <button class="mini" id="btnClear"><i data-lucide="trash-2"></i>Effacer</button>
+    </div>
+    <div class="log" id="log"></div>
+    <div class="log-send">
+      <input id="hexInput" placeholder="AA 08 01 01 FF 00 00 …" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="text">
+      <label class="crc-check" title="Ajouter CRC-8 à la fin"><input type="checkbox" id="hexCrc">CRC</label>
+      <button class="icon-btn" id="btnSend" style="width:40px;height:40px;color:var(--cyan);border-color:rgba(34,211,238,.4)"><i data-lucide="send"></i></button>
+    </div>
+  </div>
+</div>
 
-        async function writeToAll(data) {
-            for (const char of allWriteChars) {
-                try {
-                    if (char.properties.writeWithoutResponse) await char.writeValueWithoutResponse(data);
-                    else await char.writeValue(data);
-                } catch(e) {}
-            }
-        }
+<!-- RÉGLAGES -->
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <div class="modal-h">
+      <h3>RÉGLAGES</h3>
+      <button class="icon-btn" id="btnCloseModal"><i data-lucide="x"></i></button>
+    </div>
 
-        function parseMiniQFrame(data) {
-            if (data.length < 5 || data[0] !== 0x55) return;
-            const frameType = data[1];
+    <div class="set-sec">
+      <p class="st">Connexion</p>
+      <div class="set-row"><div class="lab">Reconnexion automatique<small>Réessaie après une coupure du lien BLE</small></div>
+        <label class="switch"><input type="checkbox" id="setAutoReconnect"><i></i></label></div>
+      <div class="set-row"><div class="lab">Voir tous les appareils BLE<small>Sinon filtre « T1FR… » / « TDE… » uniquement</small></div>
+        <label class="switch"><input type="checkbox" id="setShowAll"><i></i></label></div>
+      <div class="set-row"><div class="lab">Handshake VCU · 6,5 s<small>Trame AA 01 10 00 FF… (keep-alive officiel)</small></div>
+        <label class="switch"><input type="checkbox" id="setHandshake"><i></i></label></div>
+      <div class="set-row"><div class="lab">Poll 1 Hz (AA 55 01 01 00 02)<small>Votre paquet validé sur cette machine</small></div>
+        <label class="switch"><input type="checkbox" id="setLegacyPoll"><i></i></label></div>
+      <div class="set-row"><div class="lab">Garder l'écran allumé<small>WakeLock pendant la connexion</small></div>
+        <label class="switch"><input type="checkbox" id="setWakeLock"><i></i></label></div>
+      <div class="set-row"><div class="lab">Journal des trames décodées<small>Lignes DEC dans la console (55 52 / 71 / 72 / 73)</small></div>
+        <label class="switch"><input type="checkbox" id="setLogDecoded"><i></i></label></div>
+    </div>
 
-            // Tension Globale (52V)
-            if (frameType === 0x43) {
-                if (data[8] !== undefined && data[9] !== undefined) {
-                    const rawVolt = (data[8] << 8) | data[9];
-                    if (rawVolt > 400 && rawVolt < 650) {
-                        document.getElementById('voltage').innerText = (rawVolt / 10).toFixed(1);
-                    }
-                }
-            }
+    <div class="set-sec">
+      <p class="st">Jauge &amp; vitesse</p>
+      <div class="set-row"><div class="lab">Échelle max compteur (km/h)</div>
+        <input class="num-in" type="number" id="setMaxSpeed" min="25" max="160" step="5"></div>
+      <div class="set-row"><div class="lab">Roue automatique<small>Lue dans la trame 55 71 (t[6] × 0,1)</small></div>
+        <label class="switch"><input type="checkbox" id="setWheelAuto"><i></i></label></div>
+      <div class="set-row"><div class="lab">Taille roue manuelle<small>Utilisée si auto désactivée ou 55 71 absente</small></div>
+        <input class="num-in" type="number" id="setWheel" min="5" max="20" step="0.5"></div>
+    </div>
 
-            // Vitesse & Température
-            if (frameType === 0x71) {
-                if (data[3] !== undefined) document.getElementById('speed').innerText = data[3];
-                if (data[5] !== undefined && data[5] > 0 && data[5] < 90) {
-                    document.getElementById('temp').innerText = data[5];
-                }
-            }
+    <div class="set-sec">
+      <p class="st">Éclairage LED</p>
+      <div class="set-row"><div class="lab">Octet « mode » (déc.)<small>t[3] de la commande 0x08 · 1 = fixe par défaut</small></div>
+        <input class="num-in" type="number" id="setLedMode" min="0" max="255"></div>
+    </div>
 
-            // Batterie & Courant
-            if (frameType === 0x73) {
-                // Filtre Anti-0% : on ignore si la valeur est 0 (bug contrôleur en accélération)
-                if (data[12] !== undefined && data[12] > 0 && data[12] <= 100) {
-                    document.getElementById('battery').innerText = data[12];
-                }
-                if (data[9] !== undefined) {
-                    let rawCurrent = data[9];
-                    if (rawCurrent > 128) rawCurrent -= 256;
-                    document.getElementById('current').innerText = (rawCurrent / 10).toFixed(1);
-                }
-            }
-        }
+    <div class="set-sec">
+      <p class="st">Offsets de décodage (trame 55 52)</p>
+      <div class="off-grid">
+        <div class="off-item"><label>Tension · idx</label><input type="number" id="offVolt" min="2" max="17"></div>
+        <div class="off-item"><label>Courant · idx</label><input type="number" id="offCur" min="2" max="17"></div>
+        <div class="off-item"><label>SOC % · idx</label><input type="number" id="offSoc" min="2" max="18"></div>
+        <div class="off-item"><label>Temp batt. · idx</label><input type="number" id="offBatTemp" min="2" max="18"></div>
+        <div class="off-item"><label>Offset courant</label><input type="number" id="offCurBase" step="1"></div>
+        <div class="off-item"><label>Offset température</label><input type="number" id="offTempBase" step="1"></div>
+      </div>
+    </div>
 
-        document.getElementById('connectBtn').addEventListener('click', async () => {
-            try {
-                log('Connexion...');
-                const device = await navigator.bluetooth.requestDevice({
-                    acceptAllDevices: true,
-                    optionalServices: [SERVICE_UUID]
-                });
+    <div class="set-sec">
+      <p class="st">Scooter détecté</p>
+      <div class="info-line"><span>Nom BLE / FIN</span><b id="infoName">—</b></div>
+      <div class="info-line"><span>N° de cadre</span><b id="infoFrame">—</b></div>
+      <div class="info-line"><span>Firmware VCU</span><b id="infoSw">—</b></div>
+      <div class="info-line"><span>Code batterie</span><b id="infoBat">—</b></div>
+    </div>
 
-                const server = await device.gatt.connect();
-                const service = await server.getPrimaryService(SERVICE_UUID);
-                const characteristics = await service.getCharacteristics();
+    <button class="btn-danger" id="btnResetCfg"><i data-lucide="rotate-ccw"></i>Réinitialiser les réglages</button>
+  </div>
+</div>
 
-                allWriteChars = [];
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   TEVERUN DASH — Console BLE iOS (Bluefy) · fichier autonome
+   Protocole VCU Teverun : trames 20 octets, CRC-8/ATM (poly 0x07).
+   Entrées  (VCU→tél) : 55 xx … CRC   Sortantes (tél→VCU) : AA xx … CRC
+   ══════════════════════════════════════════════════════════════════ */
+'use strict';
 
-                for (const char of characteristics) {
-                    if (char.properties.notify || char.properties.indicate) {
-                        await char.startNotifications();
-                        char.addEventListener('characteristicvaluechanged', (e) => {
-                            parseMiniQFrame(new Uint8Array(e.target.value.buffer));
-                        });
-                    }
-                    if (char.properties.write || char.properties.writeWithoutResponse) {
-                        allWriteChars.push(char);
-                    }
-                }
+/* ---------- Constantes ---------- */
+const SVC   = '49535343-fe7d-4ae5-8fa9-9fafd205e455';        // Service UART ISSC
+const CH_RX_HINT = '49535343-8841-43f4-a8d4-ecbe34729bb3';   // RX UART classique (priorité écriture)
+const POLL  = new Uint8Array([0xAA,0x55,0x01,0x01,0x00,0x02]); // Votre poll validé (1 Hz)
+const FRAME = 20;
 
-                document.getElementById('connectBtn').style.display = 'none';
-                document.getElementById('dash').style.display = 'block';
-                log('✓ MINI Q CONNECTÉE !');
+/* ---------- Configuration persistante ---------- */
+const DEF_CFG = {
+  autoReconnect:true, showAll:false, handshake:true, legacyPoll:true, wakeLock:false,
+  maxSpeed:100, wheelAuto:true, wheel:10.0,
+  ledMode:1,
+  offVolt:2, offCur:6, offSoc:8, offBatTemp:10, offCurBase:-1000, offTempBase:-40,
+  logDecoded:true
+};
+let cfg = loadCfg();
+function loadCfg(){
+  try{ const s = JSON.parse(localStorage.getItem('tevdash_cfg')||'{}'); return Object.assign({},DEF_CFG,s); }
+  catch(e){ return Object.assign({},DEF_CFG); }
+}
+function saveCfg(){ try{ localStorage.setItem('tevdash_cfg', JSON.stringify(cfg)); }catch(e){} }
 
-                setInterval(async () => {
-                    await writeToAll(new Uint8Array([0xAA, 0x55, 0x01, 0x01, 0x00, 0x02]));
-                }, 500);
+/* ---------- État global ---------- */
+const st = {
+  connected:false, demo:false, manualDisc:false, reconnecting:false,
+  speed:0, dispSpeed:0, volt:NaN, pole:NaN, cur:0, soc:NaN,
+  batTemp:NaN, ctrlTemp:NaN, frontT:NaN, rearT:NaN,
+  gear:0, gearLimit:0, limit:0, nominalV:0, wheel:0, unitMiles:false, eco:false, tcs:false,
+  speedRaw:0, avg:NaN, max:NaN, trip:NaN, odo:NaN, regenCum:NaN,
+  dual:false, headlight:false, park:false, faults:0,
+  name:'', frameNum:'', sw:'', batCode:'',
+  lastFrameAt:0, frames:0, framesWin:0, rxN:0, txN:0,
+  ledKey:null
+};
+let device=null, server=null, service=null;
+let writeChars=[], notifyChars=[];
+let pollTimer=null, hsTimer=null, demoTimer=null, demoTick=0;
+let wq=Promise.resolve();
+let rxBuf=[];
+let paused=false, autoScroll=true;
+let wakeLock=null;
 
-            } catch (err) {
-                log('ERREUR : ' + err.message);
-            }
-        });
+/* ---------- Utilitaires ---------- */
+const $ = id => document.getElementById(id);
+const u16 = (t,i)=> ((t[i]&0xFF)<<8) | (t[i+1]&0xFF);
+const bit = (v,b)=> (v>>b)&1;
+const delay = ms => new Promise(r=>setTimeout(r,ms));
+const toHex = b => Array.from(b).map(x=>x.toString(16).toUpperCase().padStart(2,'0')).join(' ');
+const tooOld = ts => !ts || (Date.now()-ts>4000);
+function fmt(v,d){ if(typeof v!=='number'||isNaN(v)) return '—';
+  return v.toLocaleString('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d}); }
 
-        // ENVOI MASSIF DE TOUTES LES VARIANTES LED TEVERUN
-        async function sendLedColor(r, g, b) {
-            if (allWriteChars.length === 0) return;
-            const calcSum = (arr) => arr.reduce((acc, v) => acc + v, 0) & 0xFF;
+/* CRC-8/ATM : poly 0x07, init 0x00, MSB-first, pas de reflection */
+function crc8(arr,len){
+  let c=0;
+  for(let i=0;i<len;i++){ c^=arr[i]&0xFF;
+    for(let b=0;b<8;b++) c=(c&0x80)?(((c<<1)^0x07)&0xFF):((c<<1)&0xFF); }
+  return c;
+}
+/* Trame sortante 20 octets : [0]=AA [1]=cmd [2..18]=payload (FF = sans changement) [19]=CRC */
+function buildCmd(cmd,payload){
+  const f=new Uint8Array(FRAME).fill(0xFF);
+  f[0]=0xAA; f[1]=cmd;
+  if(payload) for(const k in payload) f[+k]=payload[k]&0xFF;
+  f[19]=crc8(f,19);
+  return f;
+}
 
-            const payloads = [
-                // 1. Commandes pour FORCER L'ALLUMAGE (Power ON) avant de changer la couleur
-                [0x04, 0x10, 0x01, 0x01, 0x00],
-                [0x03, 0x10, 0x01, 0x01],
-                
-                // 2. Commandes de Couleur (Toutes les variantes OpCodes Teverun)
-                [0x06, 0x10, 0x03, r, g, b],             // Format Standard Mini
-                [0x07, 0x10, 0x03, r, g, b, 0x01],       // Format Standard + Mode Fixe
-                [0x06, 0x08, 0x03, r, g, b],             // Format Minimotors TFT
-                [0x07, 0x08, 0x01, r, g, b, 0xFF],       // Format TFT V2 avec luminosité max
-                [0x06, 0x0C, 0x03, r, g, b],             // Format Alternatif 1
-                [0x06, 0x0B, 0x03, r, g, b]              // Format Alternatif 2
-            ];
+/* ---------- Console ---------- */
+const logEl=$('log'); const MAX_LOG=320;
+function logLine(dir,msg,cls){
+  if(paused && cls!=='sys') return;
+  const t=new Date();
+  const hh=String(t.getHours()).padStart(2,'0'), mm=String(t.getMinutes()).padStart(2,'0'),
+        ss=String(t.getSeconds()).padStart(2,'0'), ms=String(t.getMilliseconds()).padStart(3,'0');
+  const div=document.createElement('div');
+  div.className='log-line '+cls;
+  div.innerHTML='<span class="lt">'+hh+':'+mm+':'+ss+'.'+ms+'</span><span class="dir">'+dir+'</span><span class="msg"></span>';
+  div.querySelector('.msg').textContent=msg;
+  logEl.appendChild(div);
+  while(logEl.children.length>MAX_LOG) logEl.removeChild(logEl.firstChild);
+  if(autoScroll) logEl.scrollTop=logEl.scrollHeight;
+}
+const logRx  = b => { st.rxN++; $('rxCnt').textContent='RX '+st.rxN; logLine('RX',toHex(b),'rx'); };
+const logTx  = (b,count) => { if(count!==false){ st.txN++; $('txCnt').textContent='TX '+st.txN; } logLine('TX',toHex(b),'tx'); };
+const logSys = m => logLine('SYS',m,'sys');
+const logDec = m => { if(cfg.logDecoded) logLine('DEC',m,'dec'); };
 
-            log(`--> Tir groupé LED (${r},${g},${b})...`);
+/* ---------- Toasts ---------- */
+function toast(msg,ok){
+  const d=document.createElement('div');
+  d.className='toast '+(ok?'ok':'err');
+  d.innerHTML='<i data-lucide="'+(ok?'check-circle-2':'alert-triangle')+'"></i><span></span>';
+  d.querySelector('span').textContent=msg;
+  $('toasts').appendChild(d);
+  if(window.lucide) lucide.createIcons();
+  setTimeout(()=>{ d.style.opacity='0'; d.style.transition='opacity .4s'; setTimeout(()=>d.remove(),400); },4200);
+}
 
-            for (let p of payloads) {
-                // On envoie avec l'en-tête AA 55 (Appli Teverun)
-                await writeToAll(new Uint8Array([0xAA, 0x55, ...p, calcSum(p)]));
-                // On envoie avec l'en-tête A5 5A (TFT Minimotors)
-                await writeToAll(new Uint8Array([0xA5, 0x5A, ...p, calcSum(p)]));
-            }
-            
-            // Format générique sans checksum (Puces SP107E parfois intégrées)
-            await writeToAll(new Uint8Array([0x56, r, g, b, 0x00, 0xF0, 0xAA]));
-            
-            log(`✓ 17 trames LED envoyées !`);
-        }
-    </script>
+/* ---------- Statut ---------- */
+function setStatus(mode,txt){
+  const p=$('statusPill');
+  p.className='pill'+(mode?' '+mode:'');
+  $('statusTxt').textContent=txt;
+}
+
+/* ══════════════════  BLUETOOTH  ══════════════════ */
+if(!navigator.bluetooth){ $('bleWarn').classList.add('show'); }
+
+async function requestBle(){
+  const opts = cfg.showAll
+    ? {acceptAllDevices:true, optionalServices:[SVC]}
+    : {filters:[{name:'T1FR106FQA25I013'},{namePrefix:'T1FR'},{namePrefix:'TDE'},{namePrefix:'T2FR'},{namePrefix:'AWP'}],
+       optionalServices:[SVC]};
+  return navigator.bluetooth.requestDevice(opts);
+}
+
+async function connectFlow(){
+  if(!navigator.bluetooth){ $('bleWarn').classList.add('show'); toast('Web Bluetooth non disponible — utilisez Bluefy sous HTTPS.'); return; }
+  try{
+    setStatus('busy','Recherche');
+    device = await requestBle();
+    device.addEventListener('gattserverdisconnected', onGattDisc);
+    st.name = device.name||'';
+    st.manualDisc=false;
+    await attachGatt();
+  }catch(e){
+    setStatus('','Hors ligne');
+    if(e && e.name==='NotFoundError'){ logSys('Sélection annulée.'); }
+    else { logSys('Erreur connexion : '+(e.message||e)); toast('Connexion échouée : '+(e.message||e)); }
+  }
+}
+
+async function attachGatt(){
+  logSys('Connexion GATT → '+(st.name||device.id));
+  setStatus('busy','Connexion');
+  server = await device.gatt.connect();
+  await delay(700); // laisse le stack iOS se stabiliser avant la découverte
+  service = await server.getPrimaryService(SVC);
+  const chars = await service.getCharacteristics();
+
+  notifyChars=[]; writeChars=[];
+  for(const c of chars){
+    const p=c.properties, u=c.uuid;
+    logSys('Caractéristique '+u.slice(4,8)+'… ['+['read','write','writeWithoutResponse','notify','indicate'].filter(k=>p[k]).join(', ')+']');
+    if(p.notify||p.indicate) notifyChars.push(c);
+    if(p.write||p.writeWithoutResponse) writeChars.push(c);
+  }
+  writeChars.sort((a,b)=> (a.uuid===CH_RX_HINT?-1:0) - (b.uuid===CH_RX_HINT?-1:0));
+  if(!writeChars.length) throw new Error('Aucune caractéristique écrivable trouvée');
+  if(!notifyChars.length) logSys('Attention : aucune caractéristique NOTIFY trouvée');
+
+  let subN=0;
+  for(const c of notifyChars){
+    try{
+      await c.startNotifications();
+      c.addEventListener('characteristicvaluechanged', onNotify);
+      subN++;
+    }catch(e){ logSys('startNotifications refusé sur '+c.uuid.slice(4,8)+'… : '+(e.message||e)); }
+  }
+  if(!subN) throw new Error('Aucun abonnement NOTIFY possible');
+  logSys('Notifications actives sur '+subN+' caractéristique(s)');
+
+  st.connected=true; st.manualDisc=false; st.reconnecting=false;
+  st.frames=0; rxBuf=[]; st.lastFrameAt=0;
+  setStatus('on','Connecté');
+  $('viewConnect').hidden=true; $('viewDash').hidden=false;
+  $('btnDisconnect').hidden=false;
+  $('infoName').textContent = st.name||'—';
+
+  startKeepAlives();
+  syncClock();
+  if(cfg.wakeLock) acquireWakeLock();
+  logSys('Flux télémétrie démarré. En attente des trames 55 …');
+}
+
+function startKeepAlives(){
+  stopKeepAlives();
+  if(cfg.handshake){
+    const hs=buildCmd(0x01,{2:0x10,3:0x00});
+    bleWrite(hs,'handshake',true);
+    logTx(hs,false); // trace le 1er (sans double comptage), puis silencieux
+    hsTimer=setInterval(()=>{ if(st.connected) bleWrite(buildCmd(0x01,{2:0x10,3:0x00}),null,true); },6500);
+    logSys('Handshake VCU 6,5 s activé (AA 01 10 00 FF… CRC)');
+  }
+  if(cfg.legacyPoll){
+    logTx(POLL,false);
+    pollTimer=setInterval(()=>{ if(st.connected) bleWrite(POLL,null,true); },1000);
+    logSys('Poll 1 Hz activé : '+toHex(POLL));
+  }
+}
+function stopKeepAlives(){ clearInterval(pollTimer); clearInterval(hsTimer); pollTimer=hsTimer=null; }
+
+function syncClock(){
+  const d=new Date();
+  const f=buildCmd(0x1C,{2:d.getFullYear()%100,3:d.getMonth()+1,4:d.getDate(),5:d.getHours(),6:d.getMinutes(),7:d.getSeconds()});
+  bleWrite(f,null,true);
+  logSys('Horloge RTC synchronisée (cmd 0x1C)');
+}
+
+function onGattDisc(){
+  const was=st.connected;
+  st.connected=false;
+  stopKeepAlives(); releaseWakeLock();
+  setStatus('','Hors ligne');
+  if(st.manualDisc){
+    logSys('Déconnecté (manuel).');
+    teardownViews();
+  }else{
+    logSys('Lien BLE perdu.');
+    if(cfg.autoReconnect && was && device){
+      autoReconnectLoop();
+    }else teardownViews();
+  }
+}
+async function autoReconnectLoop(){
+  st.reconnecting=true;
+  for(let i=1;i<=6;i++){
+    if(!device||st.manualDisc) break;
+    setStatus('busy','Lien ' + i + '/6');
+    logSys('Reconnexion automatique — tentative '+i+'/6…');
+    try{ await attachGatt(); toast('Reconnecté à '+(st.name||'la Teverun'),true); return; }
+    catch(e){ logSys('Échec tentative '+i+' : '+(e.message||e)); await delay(2500); }
+  }
+  st.reconnecting=false; setStatus('','Hors ligne'); teardownViews();
+}
+function teardownViews(){
+  if(st.demo) return; /* en mode démo, garder le tableau de bord affiché */
+  $('viewConnect').hidden=false; $('viewDash').hidden=true; $('btnDisconnect').hidden=true;
+  releaseWakeLock();
+}
+async function disconnect(){
+  st.manualDisc=true; st.connected=false; stopKeepAlives();
+  demoStop();
+  if(device && device.gatt.connected){ try{ device.gatt.disconnect(); }catch(e){} }
+  setStatus('','Hors ligne'); teardownViews();
+}
+
+/* Écriture sérialisée (une requête GATT à la fois — important sous iOS) */
+function bleWrite(bytes,label,silent){
+  wq=wq.then(()=>doWrite(bytes,label,silent)).catch(()=>{});
+  return wq;
+}
+async function doWrite(bytes,label,silent){
+  if(!st.connected || st.demo){ if(!silent) logTx(bytes); return; }
+  let lastErr=null;
+  for(const c of writeChars){
+    try{
+      if(c.properties.write){
+        if(c.writeValueWithResponse) await c.writeValueWithResponse(bytes);
+        else await c.writeValue(bytes);
+      }else{
+        if(c.writeValueWithoutResponse) await c.writeValueWithoutResponse(bytes);
+        else await c.writeValue(bytes);
+      }
+      if(!silent){ logTx(bytes); if(label) logSys('→ '+label); }
+      else { st.txN++; $('txCnt').textContent='TX '+st.txN; }
+      return;
+    }catch(e){ lastErr=e; }
+  }
+  logSys('Écriture échouée : '+(lastErr&&(lastErr.message||lastErr)));
+}
+
+/* ══════════════════  RÉCEPTION & DÉCODAGE  ══════════════════ */
+function onNotify(ev){
+  const b=new Uint8Array(ev.target.value.buffer, ev.target.value.byteOffset, ev.target.value.byteLength);
+  if(!b.length) return;
+  logRx(b);
+  for(let i=0;i<b.length;i++) rxBuf.push(b[i]);
+  extractFrames();
+}
+/* Extraction : une notification peut porter plusieurs trames 20 o (ou une fraction) */
+function extractFrames(){
+  let guard=0;
+  while(rxBuf.length>=FRAME && guard++<64){
+    if(rxBuf[0]!==0x55){ rxBuf.shift(); continue; }
+    const f=rxBuf.slice(0,FRAME);
+    if(crc8(f,19)===f[19]){ rxBuf.splice(0,FRAME); dispatchFrame(f); }
+    else rxBuf.shift();
+  }
+  if(rxBuf.length>240) rxBuf=[];
+}
+
+const lastSeen={};
+function dispatchFrame(t){
+  const id=t[1], now=Date.now();
+  st.lastFrameAt=now; st.frames++; st.framesWin++;
+  if(!lastSeen[id]){ lastSeen[id]=true; logSys('Première trame reçue : 55 '+id.toString(16).toUpperCase().padStart(2,'0')); }
+  try{
+    switch(id){
+      case 0x52: parse52(t); break;
+      case 0x71: parse71(t); break;
+      case 0x72: parse72(t); break;
+      case 0x73: parse73(t); break;
+      case 0x54: parse54(t); break;
+      case 0x41: { st.batCode=asciiOf(t,2,16); $('infoBat').textContent=st.batCode||'—'; break; }
+      case 0x42: { st.frameNum=asciiOf(t,2,18); $('infoFrame').textContent=st.frameNum||'—'; break; }
+      case 0x43: { if(t[2]>0) st.sw=t[2]+'.'+t[3]+'.'+t[4]; $('infoSw').textContent=st.sw||'—'; break; }
+    }
+  }catch(e){ /* jamais bloquant */ }
+  computeDerived();
+}
+function asciiOf(t,a,b){ let s=''; for(let i=a;i<=b&&i<20;i++){ const c=t[i]&0xFF; if(c>=0x20&&c<=0x7E) s+=String.fromCharCode(c);} return s.trim(); }
+
+/* 55 52 — batterie : tension, courant (régén), SOC, températures */
+function parse52(t){
+  st.volt = u16(t,cfg.offVolt)*0.1;                 // t[2..3]  ×0,1 V  (tension réelle pack)
+  st.pole = u16(t,4)*0.1;                           // t[4..5]  ×0,1 V
+  st.cur  = u16(t,cfg.offCur)*0.1 + cfg.offCurBase; // t[6..7]  ×0,1 − 1000 A  (<0 = régén)
+  const soc=t[cfg.offSoc]; if(soc<=100) st.soc=soc; // t[8]     %
+  for(let i=0;i<3;i++){ const raw=t[cfg.offBatTemp+i];
+    if(raw>0){ const tmp=raw+cfg.offTempBase; if(tmp>-30&&tmp<150){ st.batTemp=tmp; break; } } }
+  logDec('52 · '+fmt(st.volt,1)+'V · '+fmt(st.cur,1)+'A · SOC '+(isNaN(st.soc)?'—':st.soc+'%')+' · batt '+fmt(st.batTemp,0)+'°C');
+}
+/* 55 71 — contrôle : vitesse engagée, roue, limites, statut système */
+function parse71(t){
+  st.gear=t[3];
+  const w=t[6]*0.1; if(w>=4&&w<=22) st.wheel=w;
+  st.gearLimit=t[10]; st.limit=t[11]; st.nominalV=t[15];
+  st.eco=!!bit(t[17],0); st.unitMiles=!!bit(t[17],1); st.tcs=!!bit(t[17],4);
+  logDec('71 · gear '+st.gear+' · roue '+w+' · lim '+st.limit+' km/h · nom '+st.nominalV+'V');
+}
+/* 55 72 — moteurs : courants, températures, speedRaw, statuts ECU */
+function parse72(t){
+  st.frontI=u16(t,4)*0.1; st.rearI=u16(t,12)*0.1;
+  st.speedRaw=u16(t,15);
+  st.frontT=t[9]>0 ? t[9]+cfg.offTempBase : NaN;
+  st.rearT =t[17]>0? t[17]+cfg.offTempBase: NaN;
+  const ts=[st.frontT,st.rearT].filter(x=>!isNaN(x)&&x>-30&&x<200);
+  st.ctrlTemp=ts.length?Math.max.apply(null,ts):NaN;
+  st.dualMotor=!!bit(t[3],3);
+  st.headlight=!!bit(t[11],4);
+  st.park=!!(bit(t[10],7)||bit(t[11],7));
+  logDec('72 · raw '+st.speedRaw+' · Iav '+fmt(st.frontI,1)+'A · Iar '+fmt(st.rearI,1)+'A · '+fmt(st.ctrlTemp,0)+'°C');
+}
+/* 55 73 — roulage : moy/max, trip, odo, régén cumulée */
+function parse73(t){
+  st.avg=u16(t,2)*0.1; st.max=u16(t,4)*0.1;
+  st.trip=u16(t,6)*0.1;
+  st.odo=(t[8]<<16)|(t[9]<<8)|t[10];
+  st.regenCum=u16(t,11)*0.1;
+  logDec('73 · avg '+fmt(st.avg,1)+' · max '+fmt(st.max,1)+' · trip '+fmt(st.trip,1)+' km · odo '+st.odo+' km');
+}
+/* 55 54 — défauts */
+function parse54(t){
+  let n=0; for(let i=2;i<=18;i++){ if((t[i]&0xFF)>0) n++; }
+  if(n>0 && st.faults===0) toast('Le VCU signale '+n+' code(s) défaut — voir trame 55 54');
+  st.faults=n;
+}
+
+/* Vitesse route : v = 287 × roue / speedRaw (protocole VCU) */
+function computeDerived(){
+  const raw=st.speedRaw;
+  let v=0;
+  if(raw>0 && raw<3000){
+    const w=(cfg.wheelAuto && st.wheel>0) ? st.wheel : cfg.wheel;
+    if(w>0) v=287*w/raw;
+  }
+  if(v<=0.5) v=0;
+  st.speed = st.unitMiles ? v/1.6093439 : v;
+  st.puiss = (isNaN(st.volt)?0:st.volt)*st.cur;
+}
+
+/* ══════════════════  LED RGB  ══════════════════ */
+const LED_PRESETS={
+  off:[0,0,0,0], red:[1,255,0,0], green:[1,0,255,0], blue:[1,0,0,255], violet:[1,148,0,255]
+};
+function sendLed(on,r,g,b,label){
+  const f=buildCmd(0x08,{2:on?1:0, 3:cfg.ledMode, 4:r, 5:g, 6:b});
+  logSys('LED → '+label+(on?' RGB('+r+','+g+','+b+') mode='+cfg.ledMode:''));
+  bleWrite(f,'LED '+label);
+  if(!st.connected && !st.demo) toast('Non connecté — la trame LED est affichée en console.');
+}
+document.querySelectorAll('.led-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const k=btn.dataset.led, p=LED_PRESETS[k];
+    document.querySelectorAll('.led-btn').forEach(x=>x.classList.remove('on'));
+    btn.classList.add('on');
+    st.ledKey=k;
+    sendLed(p[0],p[1],p[2],p[3],btn.textContent.trim());
+  });
+});
+$('btnLedCustom').addEventListener('click',()=>{
+  const hex=$('ledColor').value;
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  document.querySelectorAll('.led-btn').forEach(x=>x.classList.remove('on'));
+  sendLed(1,r,g,b,'Custom '+hex.toUpperCase());
+});
+
+/* ══════════════════  RENDU HUD  ══════════════════ */
+function polar(a,r){ const rad=(a-90)*Math.PI/180; return [160+r*Math.cos(rad),165+r*Math.sin(rad)]; }
+function arcPath(a0,a1,r){
+  const [x0,y0]=polar(a0,r), [x1,y1]=polar(a1,r);
+  return 'M '+x0.toFixed(2)+' '+y0.toFixed(2)+' A '+r+' '+r+' 0 '+(((a1-a0)>180)?1:0)+' 1 '+x1.toFixed(2)+' '+y1.toFixed(2);
+}
+const A0=-120, A1=120, GAUGE_R=128;
+let GAUGE_LEN=0;
+function buildGauge(){
+  const track=$('arcTrack'), prog=$('arcProg');
+  track.setAttribute('d',arcPath(A0,A1,GAUGE_R));
+  prog.setAttribute('d',arcPath(A0,A1,GAUGE_R));
+  GAUGE_LEN=2*Math.PI*GAUGE_R*((A1-A0)/360);
+  prog.style.strokeDasharray=GAUGE_LEN;
+  prog.style.strokeDashoffset=GAUGE_LEN;
+  const g=$('ticks'); g.innerHTML='';
+  const max=cfg.maxSpeed, minor=Math.max(5,Math.round(max/20)), major=minor*2;
+  for(let v=0;v<=max;v+=minor){
+    const a=A0+(v/max)*(A1-A0), isMaj=(v%major===0);
+    const [x1,y1]=polar(a,GAUGE_R-(isMaj?16:10)), [x2,y2]=polar(a,GAUGE_R-4);
+    const l=document.createElementNS('http://www.w3.org/2000/svg','line');
+    l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);
+    l.setAttribute('class','g-tick'+(isMaj?' major':'')); g.appendChild(l);
+    if(isMaj){
+      const [tx,ty]=polar(a,GAUGE_R-30);
+      const tt=document.createElementNS('http://www.w3.org/2000/svg','text');
+      tt.setAttribute('x',tx);tt.setAttribute('y',ty+3);tt.setAttribute('class','g-lab');
+      tt.textContent=v; g.appendChild(tt);
+    }
+  }
+}
+const socArc=$('socArc'); const SOC_C=2*Math.PI*44;
+socArc.style.strokeDasharray=SOC_C; socArc.style.strokeDashoffset=SOC_C;
+const arcProgEl=$('arcProg'), needleEl=$('needle');
+
+let uiCache={};
+function setTxt(id,val){ if(uiCache[id]!==val){ uiCache[id]=val; $(id).textContent=val; } }
+function setHtml(id,val){ if(uiCache['h_'+id]!==val){ uiCache['h_'+id]=val; $(id).innerHTML=val; } }
+
+let lastUi=0, lastRate=0;
+function render(now){
+  requestAnimationFrame(render);
+  /* lissage aiguille/compteur */
+  st.dispSpeed += (st.speed-st.dispSpeed)*0.14;
+  if(Math.abs(st.speed-st.dispSpeed)<0.05) st.dispSpeed=st.speed;
+
+  const maxS=cfg.maxSpeed;
+  const frac=Math.max(0,Math.min(1, st.dispSpeed/maxS));
+  arcProgEl.style.strokeDashoffset = GAUGE_LEN*(1-frac);
+  const ang=A0+frac*(A1-A0);
+  needleEl.setAttribute('transform','rotate('+ang.toFixed(1)+' 160 165)');
+
+  /* zone texte : ~10 Hz suffit */
+  if(now-lastUi<100) return;
+  lastUi=now;
+
+  setTxt('vSpeed', st.dispSpeed<0.05?'0':fmt(st.dispSpeed, st.dispSpeed<10?1:0));
+  setTxt('vUnit', st.unitMiles?'MPH':'KM/H');
+
+  const regen = st.cur < -0.2;
+  $('gaugeCard').classList.toggle('regen', regen);
+  if(regen) setTxt('regenTxt','Régén · +'+fmt(-st.cur,1)+' A');
+
+  const puiss=Math.abs(st.puiss||0);
+  setHtml('vPower', (puiss>=1000? fmt(puiss/1000,2)+' <small>kW</small>' : fmt(puiss,0)+' <small>W</small>'));
+  setTxt('vAvgMax', (isNaN(st.avg)?'—':fmt(st.avg,0))+' / '+(isNaN(st.max)?'—':fmt(st.max,0)));
+
+  /* batterie */
+  const socOk=!isNaN(st.soc)&&st.soc>=0&&st.soc<=100;
+  setTxt('vSoc', socOk?Math.round(st.soc):'—');
+  socArc.style.strokeDashoffset = SOC_C*(1-(socOk?st.soc/100:0));
+  setHtml('vVolt', fmt(st.volt,1)+' <small>V</small>');
+  const curEl=$('vCur');
+  curEl.classList.toggle('green',regen);
+  setHtml('vCur', (st.cur>0.05?'+':'')+fmt(st.cur,1)+' <small>A</small>');
+  setHtml('vBatTemp', fmt(st.batTemp,0)+' <small>°C</small>');
+
+  /* tuiles */
+  setTxt('vCtrlTemp', fmt(st.ctrlTemp,0));
+  $('tileCtrlTemp').classList.toggle('hot', !isNaN(st.ctrlTemp)&&st.ctrlTemp>=85);
+  setTxt('vTrip', fmt(st.trip,1));
+  setTxt('vOdo', isNaN(st.odo)?'—':Math.round(st.odo).toLocaleString('fr-FR'));
+  setTxt('vRegenCum', fmt(st.regenCum,1));
+  setTxt('vRegenNow', regen?fmt(-st.cur,1):'0,0');
+  setTxt('vFrames', String(st.frames));
+  if(now-lastRate>1000){ lastRate=now; setTxt('vFrameRate', st.framesWin+'/s'); st.framesWin=0; }
+
+  /* chips */
+  setTxt('chipGear', st.gear>0? ('P'+st.gear) : '—');
+  const limEl=$('chipLimit');
+  if(st.limit>0){ limEl.hidden=false; setTxt('chipLimit','LIM '+st.limit); } else limEl.hidden=true;
+  $('chipPark').hidden=!st.park;
+  $('headDot').classList.toggle('on', !!st.headlight);
+
+  /* veille du signal */
+  if(st.connected && !st.demo){
+    if(!tooOld(st.lastFrameAt)) setStatus('on','Connecté');
+    else setStatus('busy','En attente');
+  }
+}
+
+/* ══════════════════  MODE DÉMO  ══════════════════ */
+function simFrame(cmd,payload){
+  const f=new Uint8Array(FRAME).fill(0xFF);
+  f[0]=0x55; f[1]=cmd;
+  for(const k in payload) f[+k]=payload[k]&0xFF;
+  f[19]=crc8(f,19);
+  return f;
+}
+function demoStart(){
+  st.demo=true; st.manualDisc=false;
+  st.connected=true; st.name='DEMO-TEVERUN';
+  setStatus('demo','Démo');
+  $('viewConnect').hidden=true; $('viewDash').hidden=false; $('btnDisconnect').hidden=false;
+  $('infoName').textContent='DEMO-TEVERUN'; st.frames=0;
+  logSys('Mode démo : télémétrie simulée injectée dans le décodeur réel.');
+  dispatchFrame(simFrame(0x71,{3:2,6:100,10:90,11:90,15:60,17:0}));
+  dispatchFrame(simFrame(0x43,{2:5,3:4,4:19}));
+  dispatchFrame(simFrame(0x42,{ 2:0x54,3:0x31,4:0x46,5:0x52,6:0x31,7:0x30,8:0x36,9:0x46}));
+  clearInterval(demoTimer);
+  demoTimer=setInterval(()=>{
+    demoTick++;
+    const t=demoTick;
+    const speedKmh = 26+Math.sin(t*0.11)*22+(t%70<12? 14:0);
+    const speedRaw = Math.max(8, Math.round(2870/Math.max(1,speedKmh)+(Math.random()*6-3)));
+    const braking = (t%26)>19;
+    const curRaw = braking ? Math.round((1000-(8+4*Math.sin(t)))*10) : Math.round((1000+8+10*Math.abs(Math.sin(t*0.2)))*10);
+    const voltRaw = Math.round(66.4*10+Math.sin(t*0.08)*8+(braking?9:0));
+    const soc = Math.max(5, 82-Math.floor(t/60));
+    dispatchFrame(simFrame(0x72,{4:0,5:Math.round(60+Math.random()*50),9:82,12:1,13:Math.round(40+Math.random()*90),15:speedRaw>>8,16:speedRaw&0xFF,17:80}));
+    if(t%2===0) dispatchFrame(simFrame(0x52,{2:voltRaw>>8,3:voltRaw&0xFF,4:0x1A,5:0x2E,6:curRaw>>8,7:curRaw&0xFF,8:soc,10:65,11:26+40,12:0}));
+    if(t%6===0) dispatchFrame(simFrame(0x73,{2:0,3:Math.round(245),4:0,5:Math.round(486),6:0,7:Math.round(123+t),8:0,9:0x06,10:0xD6,11:0,12:Math.round(34+t*0.3)}));
+  },380);
+  toast('Mode démo activé — interface alimentée par des trames simulées.', true);
+}
+function demoStop(){ clearInterval(demoTimer); demoTimer=null; st.demo=false; }
+
+/* ══════════════════  CONSOLE : outils  ══════════════════ */
+const sheet=$('sheet');
+function sheetToggle(force){
+  const open = force!==undefined? force : !sheet.classList.contains('open');
+  sheet.classList.toggle('open',open);
+  $('sheetChevron').innerHTML='<i data-lucide="chevron-'+(open?'down':'up')+'"></i>';
+  if(window.lucide) lucide.createIcons();
+}
+$('sheetBar').addEventListener('click',()=>sheetToggle());
+/* glisser sur la barre */
+(function(){
+  let y0=null, open0=false;
+  const bar=$('sheetBar');
+  bar.addEventListener('touchstart',e=>{ y0=e.touches[0].clientY; open0=sheet.classList.contains('open'); },{passive:true});
+  bar.addEventListener('touchmove',e=>{
+    if(y0===null) return;
+    const dy=e.touches[0].clientY-y0;
+    if(dy<-38 && !open0) { sheetToggle(true); y0=null; }
+    if(dy> 38 &&  open0) { sheetToggle(false); y0=null; }
+  },{passive:true});
+  bar.addEventListener('touchend',()=>{ y0=null; },{passive:true});
+})();
+$('btnPause').addEventListener('click',e=>{
+  paused=!paused;
+  e.currentTarget.classList.toggle('on',paused);
+  e.currentTarget.innerHTML='<i data-lucide="'+(paused?'play':'pause')+'"></i>'+(paused?'Reprendre':'Pause');
+  if(window.lucide) lucide.createIcons();
+});
+$('btnScroll').addEventListener('click',e=>{
+  autoScroll=!autoScroll;
+  e.currentTarget.classList.toggle('on',autoScroll);
+  if(autoScroll) logEl.scrollTop=logEl.scrollHeight;
+});
+$('btnScroll').classList.add('on');
+$('btnClear').addEventListener('click',()=>{ logEl.innerHTML=''; logSys('Console effacée.'); });
+
+function parseHexInput(str){
+  const parts=str.replace(/0x/gi,' ').replace(/[,;:\-]/g,' ').trim().split(/\s+/).filter(Boolean);
+  if(!parts.length) throw new Error('vide');
+  return parts.map(p=>{
+    if(!/^[0-9a-fA-F]{1,2}$/.test(p)) throw new Error('« '+p+' » n\u2019est pas un octet hex valide');
+    return parseInt(p,16);
+  });
+}
+$('btnSend').addEventListener('click', sendCustom);
+$('hexInput').addEventListener('keydown',e=>{ if(e.key==='Enter') sendCustom(); });
+function sendCustom(){
+  const inp=$('hexInput');
+  try{
+    const arr=parseHexInput(inp.value);
+    if($('hexCrc').checked) arr.push(crc8(arr,arr.length));
+    const bytes=new Uint8Array(arr);
+    logTx(bytes,false);
+    if(st.connected && !st.demo) bleWrite(bytes,null,true); /* déjà tracé ci-dessus */
+    else if(st.demo) logSys('(démo) trame non émise sur le lien');
+    else toast('Non connecté : la trame est consignée mais non émise.');
+    inp.value='';
+  }catch(e){ toast('Hex invalide : '+e.message); }
+}
+
+/* ══════════════════  RÉGLAGES  ══════════════════ */
+const modal=$('modal');
+function openModal(){ syncSettingsUi(); modal.classList.add('show'); }
+function closeModal(){ modal.classList.remove('show'); }
+$('btnSettings').addEventListener('click',openModal);
+$('btnCloseModal').addEventListener('click',closeModal);
+modal.addEventListener('click',e=>{ if(e.target===modal) closeModal(); });
+
+function syncSettingsUi(){
+  $('setAutoReconnect').checked=cfg.autoReconnect;
+  $('setShowAll').checked=cfg.showAll;
+  $('setHandshake').checked=cfg.handshake;
+  $('setLegacyPoll').checked=cfg.legacyPoll;
+  $('setWakeLock').checked=cfg.wakeLock;
+  $('setLogDecoded').checked=cfg.logDecoded;
+  $('setMaxSpeed').value=cfg.maxSpeed;
+  $('setWheelAuto').checked=cfg.wheelAuto;
+  $('setWheel').value=cfg.wheel;
+  $('setLedMode').value=cfg.ledMode;
+  $('offVolt').value=cfg.offVolt; $('offCur').value=cfg.offCur;
+  $('offSoc').value=cfg.offSoc; $('offBatTemp').value=cfg.offBatTemp;
+  $('offCurBase').value=cfg.offCurBase; $('offTempBase').value=cfg.offTempBase;
+}
+function bindCfg(id,key,isNum){
+  $(id).addEventListener('change',e=>{
+    const el=e.target;
+    cfg[key]= isNum? (parseFloat(el.value)||0) : !!el.checked;
+    saveCfg();
+    if(key==='maxSpeed') buildGauge();
+    if(st.connected && (key==='handshake'||key==='legacyPoll')) startKeepAlives();
+    if(key==='wakeLock') cfg.wakeLock? acquireWakeLock() : releaseWakeLock();
+  });
+}
+bindCfg('setAutoReconnect','autoReconnect');
+bindCfg('setShowAll','showAll');
+bindCfg('setHandshake','handshake');
+bindCfg('setLegacyPoll','legacyPoll');
+bindCfg('setWakeLock','wakeLock');
+bindCfg('setLogDecoded','logDecoded');
+bindCfg('setMaxSpeed','maxSpeed',true);
+bindCfg('setWheelAuto','wheelAuto');
+bindCfg('setWheel','wheel',true);
+bindCfg('setLedMode','ledMode',true);
+bindCfg('offVolt','offVolt',true);
+bindCfg('offCur','offCur',true);
+bindCfg('offSoc','offSoc',true);
+bindCfg('offBatTemp','offBatTemp',true);
+bindCfg('offCurBase','offCurBase',true);
+bindCfg('offTempBase','offTempBase',true);
+
+$('btnResetCfg').addEventListener('click',()=>{
+  cfg=Object.assign({},DEF_CFG); saveCfg(); syncSettingsUi(); buildGauge();
+  toast('Réglages restaurés aux valeurs documentées du protocole.',true);
+});
+
+/* WakeLock */
+async function acquireWakeLock(){
+  try{ if('wakeLock' in navigator){ wakeLock=await navigator.wakeLock.request('screen'); logSys('WakeLock actif — écran maintenu allumé.'); } }
+  catch(e){ logSys('WakeLock refusé : '+(e.message||e)); }
+}
+function releaseWakeLock(){ try{ wakeLock&&wakeLock.release(); }catch(e){} wakeLock=null; }
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible' && cfg.wakeLock && st.connected) acquireWakeLock();
+});
+
+/* ══════════════════  ACTIONS PRINCIPALES  ══════════════════ */
+$('btnConnect').addEventListener('click',()=>{ demoStop(); connectFlow(); });
+$('btnDisconnect').addEventListener('click',disconnect);
+$('btnDemo').addEventListener('click',()=>{
+  if(st.demo){ demoStop(); teardownViews(); setStatus('','Hors ligne'); }
+  else { disconnectSilentDemo(); demoStart(); }
+});
+function disconnectSilentDemo(){ st.manualDisc=true; if(device&&device.gatt.connected){try{device.gatt.disconnect();}catch(e){}} }
+
+/* Erreurs globales → console */
+window.addEventListener('error',e=>{ try{logSys('JS: '+e.message);}catch(_){}});
+
+/* ══════════════════  INIT  ══════════════════ */
+buildGauge();
+requestAnimationFrame(render);
+logSys('TEVERUN DASH prêt. Service 49535343-… · trames 20 o · CRC-8/ATM.');
+logSys('Appuyez sur « Connecter » puis choisissez T1FR106FQA25I013.');
+if(window.lucide) lucide.createIcons();
+</script>
 </body>
 </html>
