@@ -16,7 +16,7 @@
         .section-title { font-size: 16px; text-align: left; margin: 15px 0 8px 5px; color: #0A84FF; font-weight: bold; }
         .led-btns { display: flex; gap: 8px; }
         .btn-led { flex: 1; padding: 12px; border: none; border-radius: 10px; color: white; font-weight: bold; font-size: 14px; cursor: pointer; }
-        #log { background: #111; color: #00ff66; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 10px; text-align: left; max-height: 150px; overflow-y: auto; margin-top: 15px; word-break: break-all; }
+        #log { background: #111; color: #00ff66; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 10px; text-align: left; max-height: 120px; overflow-y: auto; margin-top: 15px; word-break: break-all; }
     </style>
 </head>
 <body>
@@ -58,10 +58,10 @@
 
         <div class="section-title">Contrôle LED Teverun</div>
         <div class="led-btns">
-            <button class="btn-led" style="background: #ff3b30;" onclick="sendLedCmd(1)">Rouge</button>
-            <button class="btn-led" style="background: #30d158;" onclick="sendLedCmd(2)">Vert</button>
-            <button class="btn-led" style="background: #0a84ff;" onclick="sendLedCmd(3)">Bleu</button>
-            <button class="btn-led" style="background: #bf5af2;" onclick="sendLedCmd(4)">Violet</button>
+            <button class="btn-led" style="background: #ff3b30;" onclick="sendLedColor(0xFF, 0x00, 0x00)">Rouge</button>
+            <button class="btn-led" style="background: #30d158;" onclick="sendLedColor(0x00, 0xFF, 0x00)">Vert</button>
+            <button class="btn-led" style="background: #0a84ff;" onclick="sendLedColor(0x00, 0x00, 0xFF)">Bleu</button>
+            <button class="btn-led" style="background: #bf5af2;" onclick="sendLedColor(0xFF, 0x00, 0xFF)">Violet</button>
         </div>
     </div>
 
@@ -85,6 +85,46 @@
             }
         }
 
+        function parseTeverunFrame(data) {
+            if (data.length < 5 || data[0] !== 0x55) return;
+
+            const frameType = data[1];
+
+            // Trame 0x71 ou 0x72 : Télémétrie générale (Tension, Vitesse, Température)
+            if (frameType === 0x71 || frameType === 0x72) {
+                // Vitesse
+                if (data[3] !== undefined) {
+                    document.getElementById('speed').innerText = data[3];
+                }
+
+                // Température (octet 10 en hex: 0x17 = 23°C)
+                if (data[10] !== undefined && data[10] < 100) {
+                    document.getElementById('temp').innerText = data[10];
+                }
+
+                // Tension batterie (octets 8-9)
+                if (data[8] !== undefined && data[9] !== undefined) {
+                    const rawVolt = (data[8] << 8) | data[9];
+                    if (rawVolt > 300) {
+                        document.getElementById('voltage').innerText = (rawVolt / 100).toFixed(1);
+                    }
+                }
+            }
+
+            // Trame 0x73 : Batterie & Ampérage
+            if (frameType === 0x73) {
+                if (data[13] !== undefined && data[13] <= 100) {
+                    document.getElementById('battery').innerText = data[13];
+                }
+
+                // Courant (Ampères / Régénération)
+                if (data[10] !== undefined) {
+                    const rawCurrent = (data[10] > 128) ? (data[10] - 256) : data[10];
+                    document.getElementById('current').innerText = (rawCurrent / 10).toFixed(1);
+                }
+            }
+        }
+
         document.getElementById('connectBtn').addEventListener('click', async () => {
             try {
                 log('Connexion...');
@@ -102,8 +142,7 @@
                         await char.startNotifications();
                         char.addEventListener('characteristicvaluechanged', (e) => {
                             const data = new Uint8Array(e.target.value.buffer);
-                            const hex = Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' ');
-                            log('REÇU : ' + hex);
+                            parseTeverunFrame(data);
                         });
                     }
                     if (char.properties.write || char.properties.writeWithoutResponse) {
@@ -113,25 +152,14 @@
 
                 document.getElementById('connectBtn').style.display = 'none';
                 document.getElementById('dash').style.display = 'block';
-                log('✓ CONNECTÉ ! Envoi ping direct...');
+                log('✓ TELEMÉTRIE EN DIRECT !');
 
                 const pollPacket = new Uint8Array([0xAA, 0x55, 0x01, 0x01, 0x00, 0x02]);
 
                 if (targetChar) {
-                    try {
-                        await writePacket(targetChar, pollPacket);
-                        log('Ping envoyé avec succès !');
-                    } catch (e) {
-                        log('Échec envoi ping: ' + e.message);
-                    }
-
                     setInterval(async () => {
-                        try {
-                            await writePacket(targetChar, pollPacket);
-                        } catch (e) {
-                            log('Err interval: ' + e.message);
-                        }
-                    }, 1000);
+                        try { await writePacket(targetChar, pollPacket); } catch (e) {}
+                    }, 500);
                 }
 
             } catch (err) {
@@ -139,17 +167,13 @@
             }
         });
 
-        async function sendLedCmd(mode) {
+        async function sendLedColor(r, g, b) {
             if (!targetChar) return;
             try {
-                const cmds = {
-                    1: new Uint8Array([0xAA, 0x55, 0x06, 0x01, 0xFF, 0x00, 0x00, 0x01]),
-                    2: new Uint8Array([0xAA, 0x55, 0x06, 0x01, 0x00, 0xFF, 0x00, 0x01]),
-                    3: new Uint8Array([0xAA, 0x55, 0x06, 0x01, 0x00, 0x00, 0xFF, 0x01]),
-                    4: new Uint8Array([0xAA, 0x55, 0x06, 0x01, 0xFF, 0x00, 0xFF, 0x01])
-                };
-                await writePacket(targetChar, cmds[mode]);
-                log('LED envoyée mode ' + mode);
+                // Format trame LED Teverun direct (0xAA 0x55 + RGB)
+                const packet = new Uint8Array([0xAA, 0x55, 0x0A, 0x03, r, g, b, 0x00, (r + g + b) & 0xFF]);
+                await writePacket(targetChar, packet);
+                log(`LED envoyées : R=${r} G=${g} B=${b}`);
             } catch(e) {
                 log('Erreur LED: ' + e.message);
             }
