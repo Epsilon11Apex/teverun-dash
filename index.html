@@ -56,7 +56,7 @@
             </div>
         </div>
 
-        <div class="section-title">LEDs TFT (Fighter Mini)</div>
+        <div class="section-title">LEDs (Shotgun Mode)</div>
         <div class="led-btns">
             <button class="btn-led" style="background: #ff3b30;" onclick="sendLedColor(255, 0, 0)">Rouge</button>
             <button class="btn-led" style="background: #30d158;" onclick="sendLedColor(0, 255, 0)">Vert</button>
@@ -65,7 +65,7 @@
         </div>
     </div>
 
-    <div id="log">> Prêt pour la Mini Q...</div>
+    <div id="log">> Prêt...</div>
 
     <script>
         const SERVICE_UUID = '49535343-fe7d-4ae5-8fa9-9fafd205e455';
@@ -86,38 +86,34 @@
             }
         }
 
-        // DECODAGE SPECIFIQUE FIGHTER MINI Q (52V)
         function parseMiniQFrame(data) {
             if (data.length < 5 || data[0] !== 0x55) return;
             const frameType = data[1];
 
-            // Trame 0x43 : Tension globale exacte de la batterie
+            // Tension Globale (52V)
             if (frameType === 0x43) {
                 if (data[8] !== undefined && data[9] !== undefined) {
                     const rawVolt = (data[8] << 8) | data[9];
-                    // Sécurité pour une 52V (min ~42.0V, max ~58.8V)
                     if (rawVolt > 400 && rawVolt < 650) {
                         document.getElementById('voltage').innerText = (rawVolt / 10).toFixed(1);
                     }
                 }
             }
 
-            // Trame 0x71 : Vitesse et Température
+            // Vitesse & Température
             if (frameType === 0x71) {
                 if (data[3] !== undefined) document.getElementById('speed').innerText = data[3];
-                // Température à l'octet 5 (ex: 0x1E = 30°C)
                 if (data[5] !== undefined && data[5] > 0 && data[5] < 90) {
                     document.getElementById('temp').innerText = data[5];
                 }
             }
 
-            // Trame 0x73 : Pourcentage Batterie et Courant/Regen
+            // Batterie & Courant
             if (frameType === 0x73) {
-                // Pourcentage à l'octet 12
-                if (data[12] !== undefined && data[12] <= 100) {
+                // Filtre Anti-0% : on ignore si la valeur est 0 (bug contrôleur en accélération)
+                if (data[12] !== undefined && data[12] > 0 && data[12] <= 100) {
                     document.getElementById('battery').innerText = data[12];
                 }
-                // Courant à l'octet 9 (valeur signée)
                 if (data[9] !== undefined) {
                     let rawCurrent = data[9];
                     if (rawCurrent > 128) rawCurrent -= 256;
@@ -156,7 +152,6 @@
                 document.getElementById('dash').style.display = 'block';
                 log('✓ MINI Q CONNECTÉE !');
 
-                // Ping pour maintenir les données
                 setInterval(async () => {
                     await writeToAll(new Uint8Array([0xAA, 0x55, 0x01, 0x01, 0x00, 0x02]));
                 }, 500);
@@ -166,27 +161,38 @@
             }
         });
 
-        // Trames LED dédiées à l'écran TFT Teverun
+        // ENVOI MASSIF DE TOUTES LES VARIANTES LED TEVERUN
         async function sendLedColor(r, g, b) {
             if (allWriteChars.length === 0) return;
             const calcSum = (arr) => arr.reduce((acc, v) => acc + v, 0) & 0xFF;
 
-            // Paquet 1 : Format TFT Display 1 (Opcode 0x10)
-            const p1_body = [0x07, 0x10, 0x03, r, g, b, 0x01];
-            const p1 = new Uint8Array([0xAA, 0x55, ...p1_body, calcSum(p1_body)]);
+            const payloads = [
+                // 1. Commandes pour FORCER L'ALLUMAGE (Power ON) avant de changer la couleur
+                [0x04, 0x10, 0x01, 0x01, 0x00],
+                [0x03, 0x10, 0x01, 0x01],
+                
+                // 2. Commandes de Couleur (Toutes les variantes OpCodes Teverun)
+                [0x06, 0x10, 0x03, r, g, b],             // Format Standard Mini
+                [0x07, 0x10, 0x03, r, g, b, 0x01],       // Format Standard + Mode Fixe
+                [0x06, 0x08, 0x03, r, g, b],             // Format Minimotors TFT
+                [0x07, 0x08, 0x01, r, g, b, 0xFF],       // Format TFT V2 avec luminosité max
+                [0x06, 0x0C, 0x03, r, g, b],             // Format Alternatif 1
+                [0x06, 0x0B, 0x03, r, g, b]              // Format Alternatif 2
+            ];
 
-            // Paquet 2 : Format TFT Display 2 (Opcode 0x0C)
-            const p2_body = [0x07, 0x0C, 0x03, r, g, b, 0x01];
-            const p2 = new Uint8Array([0xAA, 0x55, ...p2_body, calcSum(p2_body)]);
+            log(`--> Tir groupé LED (${r},${g},${b})...`);
 
-            // Paquet 3 : Format Minimotors TFT (Opcode 0x08)
-            const p3_body = [0x06, 0x08, 0x01, r, g, b, 0xFF];
-            const p3 = new Uint8Array([0xA5, 0x5A, ...p3_body, calcSum(p3_body)]);
-
-            for (let pkt of [p1, p2, p3]) {
-                await writeToAll(pkt);
+            for (let p of payloads) {
+                // On envoie avec l'en-tête AA 55 (Appli Teverun)
+                await writeToAll(new Uint8Array([0xAA, 0x55, ...p, calcSum(p)]));
+                // On envoie avec l'en-tête A5 5A (TFT Minimotors)
+                await writeToAll(new Uint8Array([0xA5, 0x5A, ...p, calcSum(p)]));
             }
-            log(`LED TFT envoyées : R=${r} G=${g} B=${b}`);
+            
+            // Format générique sans checksum (Puces SP107E parfois intégrées)
+            await writeToAll(new Uint8Array([0x56, r, g, b, 0x00, 0xF0, 0xAA]));
+            
+            log(`✓ 17 trames LED envoyées !`);
         }
     </script>
 </body>
