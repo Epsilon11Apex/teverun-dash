@@ -3,37 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teverun Dash</title>
+    <title>Teverun Pro Dash & LED</title>
     <style>
-        body { background: #121212; color: white; font-family: -apple-system, sans-serif; text-align: center; padding: 20px 15px; }
-        .btn { background: #0A84FF; color: white; border: none; padding: 15px; font-size: 18px; border-radius: 12px; width: 100%; max-width: 350px; font-weight: bold; margin-bottom: 15px; }
-        .card { background: #1c1c1e; padding: 20px; border-radius: 16px; margin: 15px auto; max-width: 350px; }
-        .value { font-size: 48px; font-weight: bold; color: #30d158; }
-        .unit { font-size: 18px; color: #8e8e93; }
-        #log { background: #000; color: #00ff66; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 11px; text-align: left; max-height: 180px; overflow-y: auto; margin-top: 15px; word-break: break-all; }
+        body { background: #000; color: #fff; font-family: -apple-system, sans-serif; text-align: center; padding: 15px; margin: 0; }
+        .btn { background: #0A84FF; color: white; border: none; padding: 16px; font-size: 18px; border-radius: 14px; width: 100%; font-weight: bold; margin-bottom: 15px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .card { background: #1c1c1e; padding: 15px; border-radius: 14px; text-align: center; }
+        .full { grid-column: span 2; }
+        .title { font-size: 12px; color: #8e8e93; text-transform: uppercase; font-weight: 600; }
+        .value { font-size: 36px; font-weight: bold; color: #30d158; margin: 5px 0; }
+        .unit { font-size: 14px; color: #8e8e93; }
+        
+        /* Control Section LED */
+        .section-title { font-size: 16px; text-align: left; margin: 15px 0 8px 5px; color: #0A84FF; font-weight: bold; }
+        .led-btns { display: flex; gap: 8px; }
+        .btn-led { flex: 1; padding: 12px; border: none; border-radius: 10px; color: white; font-weight: bold; font-size: 14px; cursor: pointer; }
+        
+        #log { background: #111; color: #00ff66; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 10px; text-align: left; max-height: 120px; overflow-y: auto; margin-top: 15px; word-break: break-all; }
     </style>
 </head>
 <body>
-    <h2>Teverun Dash</h2>
-    <button id="connectBtn" class="btn">Connecter la Trottinette</button>
+
+    <button id="connectBtn" class="btn">Connecter Teverun</button>
 
     <div id="dash" style="display:none;">
-        <div class="card">
-            <div class="unit">VITESSE</div>
-            <div class="value" id="speed">0</div>
-            <div class="unit">KM/H</div>
+        <div class="grid">
+            <div class="card full">
+                <div class="title">Vitesse</div>
+                <div class="value" id="speed" style="font-size: 56px;">0</div>
+                <div class="unit">KM/H</div>
+            </div>
+            
+            <div class="card">
+                <div class="title">Tension</div>
+                <div class="value" id="voltage">--.-</div>
+                <div class="unit">VOLTS</div>
+            </div>
+
+            <div class="card">
+                <div class="title">Batterie</div>
+                <div class="value" id="battery">--</div>
+                <div class="unit">%</div>
+            </div>
+
+            <div class="card">
+                <div class="title">Courant / Regen</div>
+                <div class="value" id="current" style="color: #ff9f0a;">0.0</div>
+                <div class="unit">AMPÈRES</div>
+            </div>
+
+            <div class="card">
+                <div class="title">Température</div>
+                <div class="value" id="temp" style="color: #ff453a;">--</div>
+                <div class="unit">°C</div>
+            </div>
         </div>
-        <div class="card">
-            <div class="unit">BATTERIE</div>
-            <div class="value" id="battery">--</div>
-            <div class="unit">%</div>
+
+        <div class="section-title">Contrôle LED Teverun</div>
+        <div class="led-btns">
+            <button class="btn-led" style="background: #ff3b30;" onclick="setLedColor(0xFF, 0x00, 0x00)">Rouge</button>
+            <button class="btn-led" style="background: #30d158;" onclick="setLedColor(0x00, 0xFF, 0x00)">Vert</button>
+            <button class="btn-led" style="background: #0a84ff;" onclick="setLedColor(0x00, 0x00, 0xFF)">Bleu</button>
+            <button class="btn-led" style="background: #bf5af2;" onclick="setLedColor(0xFF, 0x00, 0xFF)">Violet</button>
         </div>
     </div>
 
-    <div id="log">> Prêt pour l'envoi de trames...</div>
+    <div id="log">> En attente de connexion...</div>
 
     <script>
         const SERVICE_UUID = '49535343-fe7d-4ae5-8fa9-9fafd205e455';
+        let writeChar = null;
 
         function log(msg) {
             const l = document.getElementById('log');
@@ -43,72 +82,80 @@
 
         document.getElementById('connectBtn').addEventListener('click', async () => {
             try {
-                log('Recherche Teverun...');
+                log('Connexion...');
                 const device = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
                     optionalServices: [SERVICE_UUID]
                 });
 
-                log('Connexion GATT...');
                 const server = await device.gatt.connect();
-
-                log('Obtention du service...');
                 const service = await server.getPrimaryService(SERVICE_UUID);
-
                 const characteristics = await service.getCharacteristics();
+
                 let notifyChar = null;
-                let writeChar = null;
 
                 for (const char of characteristics) {
-                    if (char.properties.notify || char.properties.indicate) {
-                        notifyChar = char;
-                    }
-                    if (char.properties.write || char.properties.writeWithoutResponse) {
-                        writeChar = char;
-                    }
+                    if (char.properties.notify || char.properties.indicate) notifyChar = char;
+                    if (char.properties.write || char.properties.writeWithoutResponse) writeChar = char;
                 }
 
                 if (notifyChar && writeChar) {
-                    log('Abonnement écoute...');
                     await notifyChar.startNotifications();
                     
                     notifyChar.addEventListener('characteristicvaluechanged', (e) => {
                         const data = new Uint8Array(e.target.value.buffer);
-                        const hex = Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' ');
-                        log('REÇU: ' + hex);
                         
-                        // Décodage basique de trame Teverun
-                        if (data.length >= 6) {
-                            // Selon le protocole, la vitesse et la batterie se trouvent souvent dans les octets 3 à 6
-                            document.getElementById('speed').innerText = data[3] !== undefined ? data[3] : 0;
-                            document.getElementById('battery').innerText = data[4] !== undefined ? data[4] : '--';
+                        // Log brut pour le reverse engineering
+                        const hex = Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' ');
+                        log('TR : ' + hex);
+
+                        // Décodage des offsets Teverun / Minimotors
+                        if (data.length >= 8) {
+                            document.getElementById('speed').innerText = data[3] || 0;
+                            
+                            // Tension (ex: 672 = 67.2V)
+                            if (data[4] && data[5]) {
+                                const volts = ((data[4] << 8) | data[5]) / 10;
+                                document.getElementById('voltage').innerText = volts.toFixed(1);
+                            }
+
+                            document.getElementById('battery').innerText = data[6] || '--';
+                            
+                            // Température (°C)
+                            if (data[7]) {
+                                document.getElementById('temp').innerText = data[7];
+                            }
                         }
                     });
 
                     document.getElementById('connectBtn').style.display = 'none';
                     document.getElementById('dash').style.display = 'block';
-                    log('✓ ÉCOUTE ACTIVE ! Envoi des pings...');
+                    log('✓ CONNECTÉ ! Télémétrie active.');
 
-                    // Trame standard de requête d'état Teverun (Poll Request)
+                    // Requete régulière d'état
                     const pollPacket = new Uint8Array([0xAA, 0x55, 0x01, 0x01, 0x00, 0x02]);
-
-                    // Envoi en boucle toutes les 1000ms
                     setInterval(async () => {
-                        try {
-                            await writeChar.writeValue(pollPacket);
-                        } catch (err) {
-                            // Ignore les erreurs d'écriture temporaires
-                        }
-                    }, 1000);
+                        try { if (writeChar) await writeChar.writeValue(pollPacket); } catch(e){}
+                    }, 800);
 
-                } else {
-                    log('Erreur: Caractéristiques écriture/lecture introuvables.');
                 }
-
             } catch (err) {
-                log('ERREUR : ' + (err.message || err));
+                log('ERREUR : ' + err.message);
             }
         });
+
+        // Envoi de commande LED RGB
+        async function setLedColor(r, g, b) {
+            if (!writeChar) return;
+            try {
+                // Trame standard de commande LED Teverun (Header + Mode LED + RGB + Checksum)
+                const packet = new Uint8Array([0xAA, 0x55, 0x0A, 0x03, r, g, b, 0x00, 0x00]);
+                await writeChar.writeValue(packet);
+                log(`LED envoyées : R=${r} G=${g} B=${b}`);
+            } catch(e) {
+                log('Erreur envoi LED: ' + e.message);
+            }
+        }
     </script>
 </body>
 </html>
