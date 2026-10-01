@@ -366,6 +366,57 @@
   .info-line span{color:var(--dim)}
   .info-line b{font-family:var(--mono);font-weight:500;color:var(--txt);text-align:right;word-break:break-all}
 
+  /* ── Inspecteur de trames ── */
+  .insp-frames{display:flex;gap:6px}
+  .fbtn{padding:6px 11px;border-radius:9px;border:1px solid var(--line);background:rgba(148,163,184,.06);
+    color:var(--mut);font-family:var(--mono);font-size:10.5px;font-weight:600;cursor:pointer;
+    -webkit-appearance:none;appearance:none;transition:.15s}
+  .fbtn:active{transform:scale(.93)}
+  .fbtn.on{color:var(--cyan);border-color:rgba(34,211,238,.5);background:rgba(34,211,238,.1)}
+  .byte-grid{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:5px;margin-top:12px}
+  .bcell{background:rgba(148,163,184,.05);border:1px solid var(--line-soft);border-radius:9px;
+    padding:5px 1px 4px;text-align:center;cursor:pointer;transition:box-shadow .3s,background .3s,border-color .3s;
+    -webkit-appearance:none;appearance:none}
+  .bcell:active{transform:scale(.92)}
+  .bcell .bi{display:block;font-size:7.5px;color:var(--dim);letter-spacing:.04em;font-weight:600}
+  .bcell .bh{display:block;font-family:var(--mono);font-size:11.5px;font-weight:700;margin-top:1px}
+  .bcell .bd{display:block;font-family:var(--mono);font-size:8px;color:var(--mut);margin-top:1px}
+  .bcell.chg{border-color:rgba(52,211,153,.65);background:rgba(52,211,153,.13);
+    box-shadow:0 0 12px rgba(52,211,153,.4)}
+  .bcell.m-volt{border-color:rgba(34,211,238,.6);color:var(--cyan)}
+  .bcell.m-cur{border-color:rgba(251,191,36,.6);color:var(--amber)}
+  .bcell.m-soc{border-color:rgba(52,211,153,.6);color:var(--green)}
+  .bcell.m-tbat{border-color:rgba(232,121,249,.6);color:var(--pink)}
+  .bcell.m-tctrl{border-color:rgba(251,85,102,.6);color:var(--red)}
+  .insp-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+  .arm{padding:7px 11px;border-radius:9px;border:1px solid var(--line);background:rgba(148,163,184,.05);
+    color:var(--mut);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+    cursor:pointer;-webkit-appearance:none;appearance:none;transition:.15s}
+  .arm:active{transform:scale(.94)}
+  .arm.armed{color:#04121a;background:var(--cyan);border-color:var(--cyan);
+    animation:pulse 1s infinite}
+  .insp-note{margin:11px 2px 0;font-size:10px;color:var(--dim);line-height:1.6}
+  .insp-note b{color:var(--green)}
+
+  /* ── Laboratoire LED ── */
+  .led-lab{margin-top:15px;border-top:1px solid var(--line-soft);padding-top:14px}
+  .lab-title{font-size:9.5px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--pink);margin-bottom:10px;display:flex;align-items:center;gap:7px}
+  .lab-title svg{width:12px;height:12px}
+  .lab-row{display:flex;gap:9px;align-items:stretch}
+  .lab-row + .lab-row{margin-top:9px}
+  .lab-status{margin:9px 1px 0;font-family:var(--mono);font-size:9.5px;color:var(--mut);
+    line-height:1.7;min-height:16px;word-break:break-all}
+  .lab-status b{color:var(--pink)}
+  .lab-field{flex:1;display:flex;flex-direction:column;gap:5px;min-width:0}
+  .lab-field label{font-size:8.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+  .lab-field input{width:100%;box-sizing:border-box;background:rgba(5,8,12,.7);border:1px solid var(--line);
+    border-radius:9px;color:var(--txt);font-family:var(--mono);font-size:11.5px;padding:8px;text-align:center;
+    outline:none;-webkit-appearance:none;appearance:none}
+  .lab-field input:focus{border-color:rgba(232,121,249,.5)}
+  .btn-pink{border-color:rgba(232,121,249,.45);background:rgba(232,121,249,.1);color:var(--pink)}
+  .preset-row{display:flex;gap:9px;margin-top:10px}
+
   /* Toasts */
   #toasts{position:fixed;top:calc(var(--sat) + 12px);left:50%;transform:translateX(-50%);
     z-index:100;display:flex;flex-direction:column;gap:8px;width:min(92vw,400px);pointer-events:none}
@@ -476,7 +527,7 @@
             <circle class="tr" cx="52" cy="52" r="44"/>
             <circle class="pr" id="socArc" cx="52" cy="52" r="44"/>
           </svg>
-          <div class="soc-txt"><b id="vSoc">—</b><span>%</span></div>
+          <div class="soc-txt"><b id="vSoc">—</b><span id="socUnit">%</span></div>
         </div>
         <div class="bat-rows">
           <div class="b-row"><span class="k"><i data-lucide="zap"></i>Tension</span><span class="v cyan" id="vVolt">— <small>V</small></span></div>
@@ -514,12 +565,50 @@
           <input type="color" id="ledColor" value="#ff8800">
           <button class="btn" id="btnLedCustom"><i data-lucide="send"></i>Couleur libre</button>
         </div>
-        <p class="led-note">Trame <span style="font-family:var(--mono)">AA 08 [on] [mode] [R G B] … CRC8</span> · mode réglable dans les paramètres.</p>
+        <div class="led-lab">
+          <div class="lab-title"><i data-lucide="flask-conical"></i>Laboratoire LED · Mini Q</div>
+          <div class="lab-row">
+            <button class="btn btn-pink" id="btnLedSweep"><i data-lucide="radar"></i>Balayage modes 0–7</button>
+            <button class="btn" id="btnLedSweepStop" hidden><i data-lucide="octagon"></i>Stop</button>
+          </div>
+          <div class="lab-status" id="labStatus">Sans réaction au cmd 08 : lancez le balayage — il envoie le cmd 08 avec mode = 0…7 (couleur active, octet [7] = luminosité, 1 trame / 800 ms). Notez le mode qui allume la rampe, ou testez un autre opcode ci-dessous.</div>
+          <div class="lab-row">
+            <div class="lab-field"><label>opcode (hex)</label><input id="labCmd" value="08"></div>
+            <div class="lab-field"><label>mode t[3]</label><input id="labMode" value="1"></div>
+            <div class="lab-field"><label>octet [7]</label><input id="labB7" value="100"></div>
+            <div class="lab-field"><label>on/off</label>
+              <button class="btn" id="btnLabToggle" style="padding:8px">ON</button>
+            </div>
+          </div>
+          <div class="lab-row">
+            <button class="btn btn-pink" id="btnLabSend"><i data-lucide="send"></i>Envoyer la variante</button>
+          </div>
+        </div>
+
+        <p class="led-note">Trame documentée : <span style="font-family:var(--mono)">AA 08 [on] [mode] [R G B] [×] FF… CRC8</span> (20 octets, validée Fighter Mini Pro). Sur Mini Q la rampe est pilotée par l'écran TFT via le VCU — si le balayage reste muet, capturez la trame de l'app officielle Teverun (log HCI Bluetooth sur Android → Wireshark) puis renvoyez-la telle quelle depuis la console hex.</p>
+      </div>
+    </section>
+
+    <!-- INSPECTEUR DE TRAMES -->
+    <section class="card" id="inspectorCard" style="margin-top:14px">
+      <div class="card-h">
+        <div class="lbl"><i data-lucide="scan-search"></i>Inspecteur de trames</div>
+        <div class="insp-frames" id="inspFrames">
+          <button class="fbtn on" data-fr="82">52</button>
+          <button class="fbtn" data-fr="113">71</button>
+          <button class="fbtn" data-fr="114">72</button>
+          <button class="fbtn" data-fr="115">73</button>
+        </div>
+      </div>
+      <div class="led-body" style="padding-top:8px">
+        <div class="byte-grid" id="byteGrid"></div>
+        <div class="insp-actions" id="inspActions"></div>
+        <p class="insp-note"><b>Les octets qui changent s'illuminent en vert</b> (fenêtre ≈ 1,5 s) : freinez, accélérez, freinez en EABS… et les champs vivants (courant, speedRaw, températures) se révèlent. Armez un champ ci-dessus puis touchez un octet pour lui affecter cet indice (persistant).</p>
       </div>
     </section>
 
     <p class="footer">
-      TEVERUN DASH v1.0 · Protocole VCU 20 octets, CRC-8/ATM, trames 55 41–73 ·
+      TEVERUN DASH v1.1 · Protocole VCU 20 octets, CRC-8/ATM, trames 55 41–73 · replis Fighter Mini Q ·
       Décodage établi d'après le protocole Teverun documenté publiquement (crédit : projet « Laufbursche Edition », PolyForm NC).
       * unité régén non certifiée par le fabricant.
     </p>
@@ -587,6 +676,20 @@
       <p class="st">Éclairage LED</p>
       <div class="set-row"><div class="lab">Octet « mode » (déc.)<small>t[3] de la commande 0x08 · 1 = fixe par défaut</small></div>
         <input class="num-in" type="number" id="setLedMode" min="0" max="255"></div>
+      <div class="set-row"><div class="lab">Octet [7] luminosité (0–255)<small>255 (0xFF) = inchangé · certaines rampes l'exigent</small></div>
+        <input class="num-in" type="number" id="setLedBright" min="0" max="255"></div>
+    </div>
+
+    <div class="set-sec">
+      <p class="st">Batterie — replis Fighter Mini Q</p>
+      <div class="set-row"><div class="lab">Courant ≈ somme moteurs<small>Si 55 52 t[6..7] = 00 00 (pas de BMS CAN sur ce firmware)</small></div>
+        <label class="switch"><input type="checkbox" id="setCurFallback"><i></i></label></div>
+      <div class="set-row"><div class="lab">SOC estimé via tension<small>Courbe linéaire min↔max si l'octet SOC vaut 0/255</small></div>
+        <label class="switch"><input type="checkbox" id="setSocCurve"><i></i></label></div>
+      <div class="set-row"><div class="lab">Tension 0 % (V)</div>
+        <input class="num-in" type="number" id="setSocMin" step="0.1"></div>
+      <div class="set-row"><div class="lab">Tension 100 % (V)</div>
+        <input class="num-in" type="number" id="setSocMax" step="0.1"></div>
     </div>
 
     <div class="set-sec">
@@ -598,6 +701,10 @@
         <div class="off-item"><label>Temp batt. · idx</label><input type="number" id="offBatTemp" min="2" max="18"></div>
         <div class="off-item"><label>Offset courant</label><input type="number" id="offCurBase" step="1"></div>
         <div class="off-item"><label>Offset température</label><input type="number" id="offTempBase" step="1"></div>
+      </div>
+      <div class="preset-row">
+        <button class="mini" id="btnTempM40">Preset temp −40 (standard)</button>
+        <button class="mini" id="btnTempZ">Preset temp 0 (brut °C)</button>
       </div>
     </div>
 
@@ -631,8 +738,10 @@ const FRAME = 20;
 const DEF_CFG = {
   autoReconnect:true, showAll:false, handshake:true, legacyPoll:true, wakeLock:false,
   maxSpeed:100, wheelAuto:true, wheel:10.0,
-  ledMode:1,
+  ledMode:1, ledBright:100,
   offVolt:2, offCur:6, offSoc:8, offBatTemp:10, offCurBase:-1000, offTempBase:-40,
+  offCtrlFront:9, offCtrlRear:17,
+  curFallback:true, socCurve:true, socMin:46.5, socMax:58.4,
   logDecoded:true
 };
 let cfg = loadCfg();
@@ -650,6 +759,7 @@ const st = {
   gear:0, gearLimit:0, limit:0, nominalV:0, wheel:0, unitMiles:false, eco:false, tcs:false,
   speedRaw:0, avg:NaN, max:NaN, trip:NaN, odo:NaN, regenCum:NaN,
   dual:false, headlight:false, park:false, faults:0,
+  frontI:NaN, rearI:NaN, curFromPack:false, curApprox:false, socRaw:NaN, socEst:false,
   name:'', frameNum:'', sw:'', batCode:'',
   lastFrameAt:0, frames:0, framesWin:0, rxN:0, txN:0,
   ledKey:null
@@ -907,6 +1017,7 @@ const lastSeen={};
 function dispatchFrame(t){
   const id=t[1], now=Date.now();
   st.lastFrameAt=now; st.frames++; st.framesWin++;
+  trackFrame(id,t,now);
   if(!lastSeen[id]){ lastSeen[id]=true; logSys('Première trame reçue : 55 '+id.toString(16).toUpperCase().padStart(2,'0')); }
   try{
     switch(id){
@@ -926,13 +1037,26 @@ function asciiOf(t,a,b){ let s=''; for(let i=a;i<=b&&i<20;i++){ const c=t[i]&0xF
 
 /* 55 52 — batterie : tension, courant (régén), SOC, températures */
 function parse52(t){
-  st.volt = u16(t,cfg.offVolt)*0.1;                 // t[2..3]  ×0,1 V  (tension réelle pack)
-  st.pole = u16(t,4)*0.1;                           // t[4..5]  ×0,1 V
-  st.cur  = u16(t,cfg.offCur)*0.1 + cfg.offCurBase; // t[6..7]  ×0,1 − 1000 A  (<0 = régén)
-  const soc=t[cfg.offSoc]; if(soc<=100) st.soc=soc; // t[8]     %
+  const v=u16(t,cfg.offVolt)*0.1;
+  st.volt=(v>=10&&v<=130)?v:NaN;                    // t[2..3] ×0,1 V — garde-fou plausibilité
+  st.pole=u16(t,4)*0.1;
+  const rawC=u16(t,cfg.offCur);
+  if(rawC>1){                                       // t[6..7] ×0,1 − 1000 A
+    const c=rawC*0.1+cfg.offCurBase;
+    st.cur=(c>-400&&c<400)?c:NaN;                   // plage physique raisonnable
+    st.curFromPack=!isNaN(st.cur);
+  }else{
+    st.curFromPack=false;                           // Mini Q : 00 00 → BMS non-CAN, courant non diffusé
+    if(!st.curWarned){ st.curWarned=true;
+      logSys('55 52 t['+cfg.offCur+'..'+(cfg.offCur+1)+'] = 00 00 — courant pack absent sur ce firmware. Repli = somme courants moteur (≈). Utilisez l\u2019inspecteur pour vérifier s\u2019il existe ailleurs.'); }
+    st.cur=NaN; /* repli calculé dans computeDerived */
+  }
+  const soc=t[cfg.offSoc];
+  st.socRaw=(soc>0&&soc<=100)?soc:NaN;              // 0/255 → non diffusé sur ce firmware
+  st.batTemp=NaN;
   for(let i=0;i<3;i++){ const raw=t[cfg.offBatTemp+i];
-    if(raw>0){ const tmp=raw+cfg.offTempBase; if(tmp>-30&&tmp<150){ st.batTemp=tmp; break; } } }
-  logDec('52 · '+fmt(st.volt,1)+'V · '+fmt(st.cur,1)+'A · SOC '+(isNaN(st.soc)?'—':st.soc+'%')+' · batt '+fmt(st.batTemp,0)+'°C');
+    if(raw>0){ const tmp=raw+cfg.offTempBase; if(tmp>-25&&tmp<140){ st.batTemp=tmp; break; } } }
+  logDec('52 · '+fmt(st.volt,1)+'V · '+(st.curFromPack?fmt(st.cur,1)+'A':'courant pack absent')+' · SOC '+(isNaN(st.socRaw)?'—':st.socRaw+'%')+' · batt '+fmt(st.batTemp,0)+'°C');
 }
 /* 55 71 — contrôle : vitesse engagée, roue, limites, statut système */
 function parse71(t){
@@ -943,13 +1067,18 @@ function parse71(t){
   logDec('71 · gear '+st.gear+' · roue '+w+' · lim '+st.limit+' km/h · nom '+st.nominalV+'V');
 }
 /* 55 72 — moteurs : courants, températures, speedRaw, statuts ECU */
+function tempByte(t,i){ const raw=t[i]; if(raw<=0) return NaN;
+  const tmp=raw+cfg.offTempBase; return (tmp>-25&&tmp<140)?tmp:NaN; }
 function parse72(t){
-  st.frontI=u16(t,4)*0.1; st.rearI=u16(t,12)*0.1;
+  const fI=u16(t,4)*0.1, rI=u16(t,12)*0.1;
+  st.frontI=(fI<300)?fI:NaN; st.rearI=(rI<300)?rI:NaN;
   st.speedRaw=u16(t,15);
-  st.frontT=t[9]>0 ? t[9]+cfg.offTempBase : NaN;
-  st.rearT =t[17]>0? t[17]+cfg.offTempBase: NaN;
-  const ts=[st.frontT,st.rearT].filter(x=>!isNaN(x)&&x>-30&&x<200);
+  st.frontT=tempByte(t,cfg.offCtrlFront);            // indices ajustables via l'inspecteur
+  st.rearT =tempByte(t,cfg.offCtrlRear);
+  const ts=[st.frontT,st.rearT].filter(x=>!isNaN(x));
   st.ctrlTemp=ts.length?Math.max.apply(null,ts):NaN;
+  if(ts.length && ts.every(x=>x<=-10) && !st.tempWarned){ st.tempWarned=true;
+    logSys('Températures ≤ −10 °C suspectes — cet firmware semble encoder les °C en brut. Essayez « Preset temp 0 » dans Réglages.'); }
   st.dualMotor=!!bit(t[3],3);
   st.headlight=!!bit(t[11],4);
   st.park=!!(bit(t[10],7)||bit(t[11],7));
@@ -980,7 +1109,23 @@ function computeDerived(){
   }
   if(v<=0.5) v=0;
   st.speed = st.unitMiles ? v/1.6093439 : v;
-  st.puiss = (isNaN(st.volt)?0:st.volt)*st.cur;
+
+  /* Courant affiché : vrai courant pack sinon repli ≈ moteurs (Mini Q sans BMS CAN) */
+  st.curApprox=false;
+  if(!st.curFromPack && cfg.curFallback){
+    const a=st.frontI, b=st.rearI;
+    if(!isNaN(a)||!isNaN(b)){ st.cur=(isNaN(a)?0:a)+(isNaN(b)?0:b); st.curApprox=true; }
+    else st.cur=NaN;
+  }
+  st.puiss = (isNaN(st.volt)||isNaN(st.cur)) ? 0 : st.volt*st.cur;
+
+  /* SOC : octet de la trame sinon estimation par courbe de tension (pack 14S 52 V) */
+  st.socEst=false;
+  if(!isNaN(st.socRaw)) st.soc=st.socRaw;
+  else if(cfg.socCurve && !isNaN(st.volt)){
+    st.soc=Math.max(0,Math.min(100,(st.volt-cfg.socMin)/(cfg.socMax-cfg.socMin)*100));
+    st.socEst=true;
+  } else st.soc=NaN;
 }
 
 /* ══════════════════  LED RGB  ══════════════════ */
@@ -988,8 +1133,8 @@ const LED_PRESETS={
   off:[0,0,0,0], red:[1,255,0,0], green:[1,0,255,0], blue:[1,0,0,255], violet:[1,148,0,255]
 };
 function sendLed(on,r,g,b,label){
-  const f=buildCmd(0x08,{2:on?1:0, 3:cfg.ledMode, 4:r, 5:g, 6:b});
-  logSys('LED → '+label+(on?' RGB('+r+','+g+','+b+') mode='+cfg.ledMode:''));
+  const f=buildCmd(0x08,{2:on?1:0, 3:cfg.ledMode, 4:r, 5:g, 6:b, 7:cfg.ledBright});
+  logSys('LED → '+label+(on?' RGB('+r+','+g+','+b+') mode='+cfg.ledMode+' [7]='+cfg.ledBright:''));
   bleWrite(f,'LED '+label);
   if(!st.connected && !st.demo) toast('Non connecté — la trame LED est affichée en console.');
 }
@@ -1068,7 +1213,7 @@ function render(now){
   setTxt('vSpeed', st.dispSpeed<0.05?'0':fmt(st.dispSpeed, st.dispSpeed<10?1:0));
   setTxt('vUnit', st.unitMiles?'MPH':'KM/H');
 
-  const regen = st.cur < -0.2;
+  const regen = st.curFromPack && !st.curApprox && !isNaN(st.cur) && st.cur < -0.2;
   $('gaugeCard').classList.toggle('regen', regen);
   if(regen) setTxt('regenTxt','Régén · +'+fmt(-st.cur,1)+' A');
 
@@ -1079,11 +1224,12 @@ function render(now){
   /* batterie */
   const socOk=!isNaN(st.soc)&&st.soc>=0&&st.soc<=100;
   setTxt('vSoc', socOk?Math.round(st.soc):'—');
+  setTxt('socUnit', st.socEst?'% estimé':'%');
   socArc.style.strokeDashoffset = SOC_C*(1-(socOk?st.soc/100:0));
   setHtml('vVolt', fmt(st.volt,1)+' <small>V</small>');
   const curEl=$('vCur');
   curEl.classList.toggle('green',regen);
-  setHtml('vCur', (st.cur>0.05?'+':'')+fmt(st.cur,1)+' <small>A</small>');
+  setHtml('vCur', (st.curApprox?'≈ ':'')+(st.cur>0.05?'+':'')+fmt(st.cur,1)+' <small>A</small>');
   setHtml('vBatTemp', fmt(st.batTemp,0)+' <small>°C</small>');
 
   /* tuiles */
@@ -1102,6 +1248,8 @@ function render(now){
   if(st.limit>0){ limEl.hidden=false; setTxt('chipLimit','LIM '+st.limit); } else limEl.hidden=true;
   $('chipPark').hidden=!st.park;
   $('headDot').classList.toggle('on', !!st.headlight);
+
+  inspRefresh(now);
 
   /* veille du signal */
   if(st.connected && !st.demo){
@@ -1145,6 +1293,123 @@ function demoStart(){
   toast('Mode démo activé — interface alimentée par des trames simulées.', true);
 }
 function demoStop(){ clearInterval(demoTimer); demoTimer=null; st.demo=false; }
+
+/* ══════════════════  INSPECTEUR DE TRAMES  ══════════════════ */
+const frameHist={};
+function trackFrame(id,t,now){
+  let h=frameHist[id];
+  if(!h){ h=frameHist[id]={cur:null,prev:null,chg:new Array(20).fill(0),at:0,n:0}; }
+  h.prev=h.cur; h.cur=Array.from(t); h.at=now; h.n++;
+  if(h.prev) for(let i=0;i<20;i++) if(h.prev[i]!==t[i]) h.chg[i]=now;
+}
+const ASSIGN_FIELDS=[
+ {k:'volt', label:'Tension',      cfg:'offVolt',     fr:0x52, pair:true },
+ {k:'cur',  label:'Courant',      cfg:'offCur',      fr:0x52, pair:true },
+ {k:'soc',  label:'SOC %',        cfg:'offSoc',      fr:0x52, pair:false},
+ {k:'tbat', label:'Temp batt',    cfg:'offBatTemp',  fr:0x52, pair:false},
+ {k:'tctf', label:'Temp ctrl AV', cfg:'offCtrlFront',fr:0x72, pair:false},
+ {k:'tctr', label:'Temp ctrl AR', cfg:'offCtrlRear', fr:0x72, pair:false},
+];
+const FIELD_CLS={volt:'m-volt',cur:'m-cur',soc:'m-soc',tbat:'m-tbat',tctf:'m-tctrl',tctr:'m-tctrl'};
+let inspFr=0x52, armedKey=null;
+const byteGrid=$('byteGrid'), inspActions=$('inspActions');
+const byteCells=[];
+(function buildInspector(){
+  for(let i=0;i<20;i++){
+    const b=document.createElement('button');
+    b.className='bcell';
+    b.innerHTML='<span class="bi">t'+i+'</span><span class="bh">··</span><span class="bd">·</span>';
+    b.addEventListener('click',()=>onByteTap(i));
+    byteGrid.appendChild(b);
+    byteCells.push({el:b,bh:b.querySelector('.bh'),bd:b.querySelector('.bd')});
+  }
+  ASSIGN_FIELDS.forEach(f=>{
+    const a=document.createElement('button');
+    a.className='arm'; a.textContent=f.label; a.dataset.key=f.k;
+    a.addEventListener('click',()=>{
+      armedKey=(armedKey===f.k)? null : f.k;
+      inspActions.querySelectorAll('.arm').forEach(x=>x.classList.toggle('armed',x.dataset.key===armedKey));
+      if(armedKey && f.fr!==inspFr) selectInspFrame(f.fr);
+    });
+    inspActions.appendChild(a);
+  });
+})();
+function selectInspFrame(id){
+  inspFr=id;
+  document.querySelectorAll('#inspFrames .fbtn').forEach(x=>x.classList.toggle('on',(+x.dataset.fr)===id));
+}
+document.querySelectorAll('#inspFrames .fbtn').forEach(x=>{
+  x.addEventListener('click',()=>selectInspFrame(+x.dataset.fr));
+});
+function onByteTap(i){
+  if(!armedKey) return;
+  const f=ASSIGN_FIELDS.find(x=>x.k===armedKey);
+  if(!f) return;
+  if(f.fr!==inspFr){ toast('Ce champ appartient à la trame 55 '+f.fr.toString(16).toUpperCase()); return; }
+  const maxIdx=f.pair?17:18;
+  if(i<2||i>maxIdx){ toast('Indice utilisable : t[2..'+maxIdx+']'); return; }
+  cfg[f.cfg]=i; saveCfg(); syncSettingsUi();
+  logSys('Affectation : '+f.label+' ← t['+i+']'+(f.pair?'+t['+(i+1)+'] (u16 BE)':'')+' · trame 55 '+inspFr.toString(16).toUpperCase());
+  armedKey=null;
+  inspActions.querySelectorAll('.arm').forEach(x=>x.classList.remove('armed'));
+}
+function inspRefresh(now){
+  const h=frameHist[inspFr];
+  for(let i=0;i<20;i++){
+    const c=byteCells[i];
+    if(h&&h.cur){
+      const v=h.cur[i], hex=v.toString(16).toUpperCase().padStart(2,'0');
+      if(c.bh.textContent!==hex){ c.bh.textContent=hex; c.bd.textContent=String(v); }
+    }else if(c.bh.textContent!=='··'){ c.bh.textContent='··'; c.bd.textContent='·'; }
+    let cls='bcell';
+    if(h&&h.cur&&(now-h.chg[i])<1500) cls+=' chg';
+    for(const f of ASSIGN_FIELDS){
+      if(f.fr!==inspFr) continue;
+      const idx=cfg[f.cfg];
+      if(i===idx||(f.pair&&i===idx+1)){ cls+=' '+FIELD_CLS[f.k]; }
+    }
+    if(c.el.className!==cls) c.el.className=cls;
+  }
+}
+
+/* ══════════════════  LABORATOIRE LED  ══════════════════ */
+let labOn=true, sweepTimer=null;
+function labRgb(){ const c=$('ledColor').value;
+  return [parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)]; }
+$('btnLabToggle').addEventListener('click',e=>{ labOn=!labOn; e.currentTarget.textContent=labOn?'ON':'OFF'; });
+$('btnLabSend').addEventListener('click',()=>{
+  const cmd=parseInt(($('labCmd').value||'').trim(),16);
+  const mode=Math.max(0,Math.min(255,parseInt($('labMode').value,10)||0));
+  const b7=Math.max(0,Math.min(255,parseInt($('labB7').value,10)||0));
+  if(isNaN(cmd)||cmd<0||cmd>255){ toast('Opcode hex invalide (00–FF)'); return; }
+  const [r,g,b]=labRgb();
+  const f=buildCmd(cmd,{2:labOn?1:0,3:mode,4:r,5:g,6:b,7:b7});
+  bleWrite(f,'LAB cmd '+cmd.toString(16).toUpperCase().padStart(2,'0'));
+  $('labStatus').innerHTML='Variante émise : <b>'+toHex(f)+'</b> — observez la rampe.';
+});
+$('btnLedSweep').addEventListener('click',()=>{
+  stopSweep();
+  let mode=0; const [r,g,b]=labRgb();
+  const b7=Math.max(0,Math.min(255,parseInt($('labB7').value,10)||0));
+  $('btnLedSweepStop').hidden=false;
+  logSys('Balayage LED cmd 08 · modes 0→7 · RGB('+r+','+g+','+b+') · [7]='+b7);
+  const step=()=>{
+    if(mode>7){
+      stopSweep();
+      const f=buildCmd(0x08,{2:0,3:cfg.ledMode,4:0,5:0,6:0,7:b7});
+      bleWrite(f,'LED OFF · fin de balayage');
+      $('labStatus').innerHTML='Balayage terminé (trame OFF envoyée). <b>Aucun mode n\u2019a allumé la rampe ?</b> Testez un autre opcode ci-dessous, ou capturez la trame de l\u2019app officielle (log HCI Android).';
+      return;
+    }
+    const f=buildCmd(0x08,{2:1,3:mode,4:r,5:g,6:b,7:b7});
+    bleWrite(f,'LED sweep mode='+mode);
+    $('labStatus').innerHTML='Essai mode <b>'+mode+' / 7</b> · '+toHex(f);
+    mode++;
+  };
+  step(); sweepTimer=setInterval(step,800);
+});
+function stopSweep(){ if(sweepTimer){ clearInterval(sweepTimer); sweepTimer=null; } const b=$('btnLedSweepStop'); if(b) b.hidden=true; }
+$('btnLedSweepStop').addEventListener('click',()=>{ stopSweep(); $('labStatus').textContent='Balayage interrompu.'; });
 
 /* ══════════════════  CONSOLE : outils  ══════════════════ */
 const sheet=$('sheet');
@@ -1225,6 +1490,11 @@ function syncSettingsUi(){
   $('setWheelAuto').checked=cfg.wheelAuto;
   $('setWheel').value=cfg.wheel;
   $('setLedMode').value=cfg.ledMode;
+  $('setLedBright').value=cfg.ledBright;
+  $('setCurFallback').checked=cfg.curFallback;
+  $('setSocCurve').checked=cfg.socCurve;
+  $('setSocMin').value=cfg.socMin;
+  $('setSocMax').value=cfg.socMax;
   $('offVolt').value=cfg.offVolt; $('offCur').value=cfg.offCur;
   $('offSoc').value=cfg.offSoc; $('offBatTemp').value=cfg.offBatTemp;
   $('offCurBase').value=cfg.offCurBase; $('offTempBase').value=cfg.offTempBase;
@@ -1249,12 +1519,22 @@ bindCfg('setMaxSpeed','maxSpeed',true);
 bindCfg('setWheelAuto','wheelAuto');
 bindCfg('setWheel','wheel',true);
 bindCfg('setLedMode','ledMode',true);
+bindCfg('setLedBright','ledBright',true);
+bindCfg('setCurFallback','curFallback');
+bindCfg('setSocCurve','socCurve');
+bindCfg('setSocMin','socMin',true);
+bindCfg('setSocMax','socMax',true);
 bindCfg('offVolt','offVolt',true);
 bindCfg('offCur','offCur',true);
 bindCfg('offSoc','offSoc',true);
 bindCfg('offBatTemp','offBatTemp',true);
 bindCfg('offCurBase','offCurBase',true);
 bindCfg('offTempBase','offTempBase',true);
+
+$('btnTempM40').addEventListener('click',()=>{ cfg.offTempBase=-40; saveCfg(); $('offTempBase').value=-40;
+  toast('Offset température = −40 (standard Teverun)',true); });
+$('btnTempZ').addEventListener('click',()=>{ cfg.offTempBase=0; saveCfg(); $('offTempBase').value=0;
+  toast('Offset température = 0 (octet = °C brut)',true); });
 
 $('btnResetCfg').addEventListener('click',()=>{
   cfg=Object.assign({},DEF_CFG); saveCfg(); syncSettingsUi(); buildGauge();
