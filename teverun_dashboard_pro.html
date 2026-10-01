@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Teverun Dashboard</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            background-color: #0f172a; /* Tailwind slate-900 */
+        }
+        
+        /* Custom scrollbar for the terminal */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5); 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(56, 189, 248, 0.5); 
+            border-radius: 4px;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .neon-glow {
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+        }
+        
+        .neon-glow-active {
+            box-shadow: 0 0 25px rgba(34, 197, 94, 0.5);
+        }
+    </style>
+</head>
+<body class="text-white h-screen flex flex-col overflow-hidden bg-slate-900">
+
+    <header class="pt-12 pb-4 px-6 flex justify-between items-center z-10 glass-panel">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-white">TEVERUN</h1>
+            <p class="text-xs text-sky-400 font-mono tracking-widest">PRO DASHBOARD</p>
+        </div>
+        <div class="flex items-center space-x-2 bg-slate-800 py-1.5 px-3 rounded-full border border-slate-700">
+            <div id="status-indicator" class="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>
+            <span id="status-text" class="text-xs font-semibold text-gray-300 uppercase">Offline</span>
+        </div>
+    </header>
+
+    <div id="connect-container" class="flex-shrink-0 flex justify-center py-6">
+        <button id="connect-btn" class="relative group">
+            <div class="absolute -inset-1 bg-gradient-to-r from-sky-500 to-blue-600 rounded-2xl blur opacity-75 group-hover:opacity-100 transition duration-300"></div>
+            <div class="relative px-12 py-4 bg-slate-800 rounded-2xl border border-slate-700 flex items-center space-x-3 active:scale-95 transition-transform">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                <span id="connect-btn-text" class="text-lg font-bold tracking-wider text-white">CONNECT BLE</span>
+            </div>
+        </button>
+    </div>
+
+    <main class="flex-grow flex flex-col px-4 gap-4 overflow-y-auto pb-4">
+        
+        <!-- Telemetry Grid -->
+        <div class="grid grid-cols-2 gap-4 opacity-50 transition-opacity duration-500" id="dashboard-panels">
+            <!-- Speedometer -->
+            <div class="glass-panel rounded-3xl p-5 flex flex-col items-center justify-center relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-16 h-16 bg-sky-500 opacity-10 rounded-bl-full"></div>
+                <span class="text-xs text-gray-400 font-semibold tracking-wider mb-1 uppercase">Speed</span>
+                <div class="flex items-baseline space-x-1">
+                    <span id="speed-value" class="text-5xl font-bold text-white font-mono">00</span>
+                    <span class="text-sm text-sky-400 font-semibold">km/h</span>
+                </div>
+            </div>
+
+            <!-- Battery -->
+            <div class="glass-panel rounded-3xl p-5 flex flex-col items-center justify-center relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-16 h-16 bg-green-500 opacity-10 rounded-bl-full"></div>
+                <span class="text-xs text-gray-400 font-semibold tracking-wider mb-1 uppercase">Battery</span>
+                <div class="flex flex-col items-center">
+                    <div class="flex items-baseline space-x-1">
+                        <span id="battery-percent" class="text-4xl font-bold text-white font-mono">--</span>
+                        <span class="text-lg text-green-400 font-semibold">%</span>
+                    </div>
+                    <span id="battery-voltage" class="text-xs text-gray-500 font-mono mt-1">00.0 V</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Controls -->
+        <div class="glass-panel rounded-3xl p-4 opacity-50 transition-opacity duration-500" id="controls-panel">
+            <span class="text-xs text-gray-400 font-semibold tracking-wider uppercase ml-2 mb-3 block">Quick Controls</span>
+            <div class="grid grid-cols-3 gap-3">
+                <!-- Toggle 1 -->
+                <button class="bg-slate-800/80 hover:bg-slate-700 border border-slate-700 rounded-2xl p-3 flex flex-col items-center justify-center transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    <span class="text-[10px] text-gray-300 font-semibold uppercase">Lights</span>
+                </button>
+                
+                <!-- Toggle 2 -->
+                <button class="bg-slate-800/80 hover:bg-slate-700 border border-slate-700 rounded-2xl p-3 flex flex-col items-center justify-center transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                    <span class="text-[10px] text-gray-300 font-semibold uppercase">Dual Motor</span>
+                </button>
+
+                <!-- Toggle 3 -->
+                <button class="bg-slate-800/80 hover:bg-slate-700 border border-slate-700 rounded-2xl p-3 flex flex-col items-center justify-center transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    <span class="text-[10px] text-gray-300 font-semibold uppercase">Lock</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Console Log Area -->
+        <div class="glass-panel rounded-2xl flex-grow flex flex-col overflow-hidden border border-slate-700/50 mt-2">
+            <div class="px-4 py-2 bg-slate-800/80 border-b border-slate-700 flex justify-between items-center">
+                <span class="text-[10px] text-sky-400 font-mono font-bold tracking-widest uppercase">System Logs</span>
+                <button id="clear-btn" class="text-[10px] text-gray-400 hover:text-white uppercase tracking-wider">Clear</button>
+            </div>
+            <div id="console-output" class="p-3 overflow-y-auto flex-grow font-mono text-[10px] leading-relaxed space-y-1">
+                <div class="text-gray-500">System initialized. Waiting for BLE connection...</div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // --- Constants ---
+        // Web Bluetooth requires UUIDs to be lowercase
+        const TEVERUN_SERVICE_UUID = '49535343-fe7d-4ae5-8fa9-9fafd205e455';
+        
+        // --- DOM Elements ---
+        const btnConnect = document.getElementById('connect-btn');
+        const btnConnectText = document.getElementById('connect-btn-text');
+        const statusIndicator = document.getElementById('status-indicator');
+        const statusText = document.getElementById('status-text');
+        const consoleOutput = document.getElementById('console-output');
+        const btnClear = document.getElementById('clear-btn');
+        
+        const dashboardPanels = document.getElementById('dashboard-panels');
+        const controlsPanel = document.getElementById('controls-panel');
+
+        let bleDevice = null;
+        let bleServer = null;
+
+        // --- Logger Helper ---
+        function log(message, type = 'info') {
+            const time = new Date().toLocaleTimeString('fr-FR', { hour12: false, hour: '2-digit', minute: '2-digit', second:'2-digit', fractionalSecondDigits: 2 });
+            const line = document.createElement('div');
+            
+            let color = 'text-gray-300';
+            if(type === 'success') color = 'text-green-400';
+            if(type === 'error') color = 'text-red-400';
+            if(type === 'system') color = 'text-sky-400';
+            if(type === 'warning') color = 'text-yellow-400';
+
+            line.className = color;
+            line.innerHTML = `<span class="text-slate-600">[${time}]</span> ${message}`;
+            
+            consoleOutput.appendChild(line);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        btnClear.addEventListener('click', () => {
+            consoleOutput.innerHTML = '';
+            log('Logs cleared.', 'system');
+        });
+
+        // --- Bluetooth Connection Logic ---
+        async function toggleConnection() {
+            if (bleDevice && bleDevice.gatt.connected) {
+                disconnectDevice();
+            } else {
+                connectDevice();
+            }
+        }
+
+        async function connectDevice() {
+            if (!navigator.bluetooth) {
+                log('Web Bluetooth is not supported in this browser.', 'error');
+                log('On iPhone, please use a BLE Web Browser like Bluefy.', 'warning');
+                return;
+            }
+
+            try {
+                log('Requesting Bluetooth device...', 'system');
+                btnConnectText.innerText = 'SCANNING...';
+                
+                // Request device matching the specific UUID
+                bleDevice = await navigator.bluetooth.requestDevice({
+                    filters: [{ services: [TEVERUN_SERVICE_UUID] }]
+                });
+
+                log(`Device selected: ${bleDevice.name || 'Unknown Device'}`, 'success');
+                
+                // Listen for disconnect events
+                bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+                log('Connecting to GATT Server...', 'system');
+                btnConnectText.innerText = 'CONNECTING...';
+                
+                bleServer = await bleDevice.gatt.connect();
+                log('Connected to GATT Server.', 'success');
+
+                log(`Discovering primary service (${TEVERUN_SERVICE_UUID.split('-')[0]})...`, 'system');
+                const service = await bleServer.getPrimaryService(TEVERUN_SERVICE_UUID);
+                log('Service discovered successfully.', 'success');
+
+                // Update UI to Connected State
+                updateUIConnected();
+                log('Ready for telemetry and commands.', 'success');
+
+                // Note for future development:
+                // Here we would typically discover characteristics:
+                // const charNotify = await service.getCharacteristic('49535343-1e4d-4bd9-ba61-23c647249616');
+                // await charNotify.startNotifications();
+
+            } catch (error) {
+                log(`Connection failed: ${error.message}`, 'error');
+                updateUIDisconnected();
+            }
+        }
+
+        function disconnectDevice() {
+            if (!bleDevice) return;
+            log('Disconnecting from device...', 'system');
+            if (bleDevice.gatt.connected) {
+                bleDevice.gatt.disconnect();
+            } else {
+                log('Bluetooth device is already disconnected.', 'warning');
+            }
+        }
+
+        function onDisconnected() {
+            log('Device disconnected.', 'error');
+            updateUIDisconnected();
+        }
+
+        // --- UI State Managers ---
+        function updateUIConnected() {
+            // Header status
+            statusIndicator.classList.remove('bg-red-500', 'shadow-[0_0_8px_rgba(239,68,68,0.8)]');
+            statusIndicator.classList.add('bg-green-500', 'shadow-[0_0_8px_rgba(34,197,94,0.8)]');
+            statusText.innerText = 'Connected';
+            statusText.classList.replace('text-gray-300', 'text-green-400');
+
+            // Button styling
+            btnConnectText.innerText = 'DISCONNECT';
+            const btnBg = btnConnect.querySelector('.bg-slate-800');
+            btnBg.classList.replace('bg-slate-800', 'bg-slate-900');
+            btnBg.classList.replace('border-slate-700', 'border-green-500/50');
+            btnConnect.querySelector('.bg-gradient-to-r').classList.replace('from-sky-500', 'from-green-500');
+            btnConnect.querySelector('.bg-gradient-to-r').classList.replace('to-blue-600', 'to-emerald-600');
+            btnConnect.querySelector('svg').classList.replace('text-sky-400', 'text-green-400');
+
+            // Enable Dashboard Panels
+            dashboardPanels.classList.remove('opacity-50');
+            controlsPanel.classList.remove('opacity-50');
+        }
+
+        function updateUIDisconnected() {
+            // Header status
+            statusIndicator.classList.remove('bg-green-500', 'shadow-[0_0_8px_rgba(34,197,94,0.8)]');
+            statusIndicator.classList.add('bg-red-500', 'shadow-[0_0_8px_rgba(239,68,68,0.8)]');
+            statusText.innerText = 'Offline';
+            statusText.classList.replace('text-green-400', 'text-gray-300');
+
+            // Button styling
+            btnConnectText.innerText = 'CONNECT BLE';
+            const btnBg = btnConnect.querySelector('.bg-slate-900') || btnConnect.querySelector('.bg-slate-800');
+            btnBg.classList.replace('bg-slate-900', 'bg-slate-800');
+            btnBg.classList.replace('border-green-500/50', 'border-slate-700');
+            const gradient = btnConnect.querySelector('.bg-gradient-to-r');
+            gradient.classList.replace('from-green-500', 'from-sky-500');
+            gradient.classList.replace('to-emerald-600', 'to-blue-600');
+            btnConnect.querySelector('svg').classList.replace('text-green-400', 'text-sky-400');
+
+            // Disable Dashboard Panels (Visual reset)
+            dashboardPanels.classList.add('opacity-50');
+            controlsPanel.classList.add('opacity-50');
+            
+            // Reset placeholders
+            document.getElementById('speed-value').innerText = '00';
+            document.getElementById('battery-percent').innerText = '--';
+            document.getElementById('battery-voltage').innerText = '00.0 V';
+        }
+
+        // Initialize event listener
+        btnConnect.addEventListener('click', toggleConnection);
+
+    </script>
+</body>
+</html>
