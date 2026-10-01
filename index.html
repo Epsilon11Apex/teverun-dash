@@ -69,7 +69,7 @@
 
     <script>
         const SERVICE_UUID = '49535343-fe7d-4ae5-8fa9-9fafd205e455';
-        let targetChar = null;
+        let allWriteChars = [];
 
         function log(msg) {
             const l = document.getElementById('log');
@@ -77,11 +77,15 @@
             l.scrollTop = l.scrollHeight;
         }
 
-        async function writePacket(char, data) {
-            if (char.properties.writeWithoutResponse) {
-                await char.writeValueWithoutResponse(data);
-            } else {
-                await char.writeValue(data);
+        async function writeToAll(data) {
+            for (const char of allWriteChars) {
+                try {
+                    if (char.properties.writeWithoutResponse) {
+                        await char.writeValueWithoutResponse(data);
+                    } else {
+                        await char.writeValue(data);
+                    }
+                } catch(e) {}
             }
         }
 
@@ -90,14 +94,12 @@
 
             const frameType = data[1];
 
-            // Télémétrie 0x71 / 0x72
             if (frameType === 0x71 || frameType === 0x72) {
-                // Vitesse
                 if (data[3] !== undefined) {
                     document.getElementById('speed').innerText = data[3];
                 }
 
-                // Température : inspection des octets 5, 6, 7 pour remonter la valeur °C exacte
+                // Température
                 for (let idx of [5, 6, 7, 11, 12]) {
                     if (data[idx] > 10 && data[idx] < 80) {
                         document.getElementById('temp').innerText = data[idx];
@@ -105,23 +107,20 @@
                     }
                 }
 
-                // Tension corrigée (ex: 60.0 V, 67.2 V)
+                // Tension sans filtrage restrictif (maintient de l'échelle à / 10)
                 if (data[8] !== undefined && data[9] !== undefined) {
                     const rawVolt = (data[8] << 8) | data[9];
-                    const voltVal = (rawVolt / 100).toFixed(1);
-                    if (voltVal > 30 && voltVal < 100) {
-                        document.getElementById('voltage').innerText = voltVal;
+                    if (rawVolt > 100) {
+                        document.getElementById('voltage').innerText = (rawVolt / 10).toFixed(1);
                     }
                 }
             }
 
-            // Trame 0x73 : Batterie & Courant
             if (frameType === 0x73) {
                 if (data[13] !== undefined && data[13] <= 100) {
                     document.getElementById('battery').innerText = data[13];
                 }
 
-                // Courant
                 if (data[10] !== undefined) {
                     let rawCurrent = data[10];
                     if (rawCurrent > 128) rawCurrent -= 256;
@@ -142,6 +141,8 @@
                 const service = await server.getPrimaryService(SERVICE_UUID);
                 const characteristics = await service.getCharacteristics();
 
+                allWriteChars = [];
+
                 for (const char of characteristics) {
                     if (char.properties.notify || char.properties.indicate) {
                         await char.startNotifications();
@@ -151,42 +152,42 @@
                         });
                     }
                     if (char.properties.write || char.properties.writeWithoutResponse) {
-                        targetChar = char;
+                        allWriteChars.push(char);
                     }
                 }
 
                 document.getElementById('connectBtn').style.display = 'none';
                 document.getElementById('dash').style.display = 'block';
-                log('✓ CONNECTÉ ! Télémétrie active.');
+                log('✓ CONNECTÉ ! ' + allWriteChars.length + ' canal(e)s d\'écriture trouvé(e)s.');
 
                 const pollPacket = new Uint8Array([0xAA, 0x55, 0x01, 0x01, 0x00, 0x02]);
 
-                if (targetChar) {
-                    setInterval(async () => {
-                        try { await writePacket(targetChar, pollPacket); } catch (e) {}
-                    }, 500);
-                }
+                setInterval(async () => {
+                    await writeToAll(pollPacket);
+                }, 500);
 
             } catch (err) {
                 log('ERREUR : ' + err.message);
             }
         });
 
-        // Envoi Trame LED Teverun / Minimotors avec Checksum dynamique
+        // Envoi broad-spectrum sur tous les canaux avec 2 formats de paquets LED Teverun
         async function sendLedColor(r, g, b) {
-            if (!targetChar) return;
-            try {
-                // Trame officielle de changement de couleur LED Teverun :
-                // Header (0xAA 0x55) + Longueur (0x06) + Cmd LED (0x03) + Mode Statique (0x01) + R + G + B + Checksum
-                const header = [0xAA, 0x55, 0x06, 0x03, 0x01, r, g, b];
-                const sum = header.reduce((acc, val) => acc + val, 0) & 0xFF;
-                const packet = new Uint8Array([...header, sum]);
-                
-                await writePacket(targetChar, packet);
-                log(`LED envoyées : R=${r} G=${g} B=${b}`);
-            } catch(e) {
-                log('Erreur LED: ' + e.message);
-            }
+            if (allWriteChars.length === 0) return;
+            
+            // Format 1 : Teverun App Packet (0xAA 0x55 0x06 0x03 ...)
+            const p1Header = [0xAA, 0x55, 0x06, 0x03, 0x01, r, g, b];
+            const p1Sum = p1Header.reduce((acc, val) => acc + val, 0) & 0xFF;
+            const p1 = new Uint8Array([...p1Header, p1Sum]);
+
+            // Format 2 : Direct LED Controller (0x55 0x00 0x0A ...)
+            const p2Header = [0x55, 0x00, 0x0A, 0x03, r, g, b];
+            const p2Sum = p2Header.reduce((acc, val) => acc + val, 0) & 0xFF;
+            const p2 = new Uint8Array([...p2Header, p2Sum]);
+
+            await writeToAll(p1);
+            await writeToAll(p2);
+            log(`LED broadcast : R=${r} G=${g} B=${b}`);
         }
     </script>
 </body>
