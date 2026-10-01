@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teverun Dash</title>
     <style>
-        body { background: #121212; color: white; font-family: -apple-system, sans-serif; text-align: center; padding: 30px 15px; }
-        .btn { background: #0A84FF; color: white; border: none; padding: 15px; font-size: 18px; border-radius: 12px; width: 100%; max-width: 350px; font-weight: bold; }
+        body { background: #121212; color: white; font-family: -apple-system, sans-serif; text-align: center; padding: 20px 15px; }
+        .btn { background: #0A84FF; color: white; border: none; padding: 15px; font-size: 18px; border-radius: 12px; width: 100%; max-width: 350px; font-weight: bold; margin-bottom: 15px; }
         .card { background: #1c1c1e; padding: 20px; border-radius: 16px; margin: 15px auto; max-width: 350px; }
         .value { font-size: 48px; font-weight: bold; color: #30d158; }
         .unit { font-size: 18px; color: #8e8e93; }
-        #log { background: #000; color: #00ff66; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 11px; text-align: left; max-height: 150px; overflow-y: auto; margin-top: 20px; }
+        #log { background: #000; color: #00ff66; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 11px; text-align: left; max-height: 200px; overflow-y: auto; margin-top: 15px; word-break: break-all; }
     </style>
 </head>
 <body>
@@ -30,12 +30,10 @@
         </div>
     </div>
 
-    <div id="log">> Prêt pour la connexion</div>
+    <div id="log">> Prêt pour l'auto-détection...</div>
 
     <script>
         const SERVICE_UUID = '49535343-fe7d-4ae5-8fa9-9fafd205e455';
-        const RX_CHAR_UUID = '49535343-1e4d-4a9c-904e-e370a99c828d'; // Écoute
-        const TX_CHAR_UUID = '49535343-8841-43f4-a5d4-0d93e2421616'; // Écriture
 
         function log(msg) {
             const l = document.getElementById('log');
@@ -47,39 +45,61 @@
             try {
                 log('Recherche de la Teverun...');
                 const device = await navigator.bluetooth.requestDevice({
-                    filters: [{ namePrefix: 'T1F' }, { namePrefix: 'TEVERUN' }],
+                    acceptAllDevices: true,
                     optionalServices: [SERVICE_UUID]
                 });
 
-                log('Connexion au serveur GATT...');
+                log('Connexion GATT...');
                 const server = await device.gatt.connect();
 
-                log('Obtention du service principal...');
+                log('Récupération du service ' + SERVICE_UUID + '...');
                 const service = await server.getPrimaryService(SERVICE_UUID);
 
-                log('Abonnement aux notifications...');
-                const rxChar = await service.getCharacteristic(RX_CHAR_UUID);
-                await rxChar.startNotifications();
-                
-                rxChar.addEventListener('characteristicvaluechanged', (e) => {
-                    const data = new Uint8Array(e.target.value.buffer);
-                    log('Trame reçue (' + data.length + ' octets) : ' + Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' '));
-                    
-                    // Décodage de base de la trame
-                    if (data.length >= 7) {
-                        const speed = data[3]; // Indice de vitesse estimé
-                        const battery = data[4]; // Indice de batterie estimé
-                        document.getElementById('speed').innerText = speed;
-                        document.getElementById('battery').innerText = battery;
-                    }
-                });
+                log('Scan des caractéristiques...');
+                const characteristics = await service.getCharacteristics();
+                log('Nombre de caractéristiques : ' + characteristics.length);
 
-                document.getElementById('connectBtn').style.display = 'none';
-                document.getElementById('dash').style.display = 'block';
-                log('✓ Abonné avec succès ! En attente de données...');
+                let notifyChar = null;
+
+                for (const char of characteristics) {
+                    const props = [];
+                    if (char.properties.read) props.push('READ');
+                    if (char.properties.write) props.push('WRITE');
+                    if (char.properties.writeWithoutResponse) props.push('WRITE_NO_RESP');
+                    if (char.properties.notify) props.push('NOTIFY');
+                    if (char.properties.indicate) props.push('INDICATE');
+
+                    log('Carac: ' + char.uuid.substring(0, 8) + '... [' + props.join(', ') + ']');
+
+                    if (char.properties.notify || char.properties.indicate) {
+                        notifyChar = char;
+                    }
+                }
+
+                if (notifyChar) {
+                    log('Abonnement à ' + notifyChar.uuid.substring(0, 8) + '...');
+                    await notifyChar.startNotifications();
+                    
+                    notifyChar.addEventListener('characteristicvaluechanged', (e) => {
+                        const data = new Uint8Array(e.target.value.buffer);
+                        const hex = Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' ');
+                        log('DONNÉES: ' + hex);
+                        
+                        if (data.length >= 5) {
+                            document.getElementById('speed').innerText = data[3] || 0;
+                            document.getElementById('battery').innerText = data[4] || '--';
+                        }
+                    });
+
+                    document.getElementById('connectBtn').style.display = 'none';
+                    document.getElementById('dash').style.display = 'block';
+                    log('✓ CONNECTÉ ET ÉCOUTE ACTIVE !');
+                } else {
+                    log('ATTENTION: Aucune caractéristique de notification trouvée.');
+                }
 
             } catch (err) {
-                log('ERREUR : ' + err.message);
+                log('ERREUR : ' + (err.message || err));
             }
         });
     </script>
