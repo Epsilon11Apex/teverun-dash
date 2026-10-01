@@ -5,44 +5,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teverun Dash</title>
     <style>
-        body { background-color: #121212; color: #ffffff; font-family: -apple-system, sans-serif; text-align: center; padding: 50px 20px; }
-        button { background-color: #0A84FF; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 10px; cursor: pointer; width: 100%; max-width: 300px; margin-bottom: 20px; }
-        .card { background-color: #1e1e1e; padding: 20px; border-radius: 15px; margin-top: 20px; }
-        .metric { font-size: 40px; font-weight: bold; margin-bottom: 10px; }
+        body { background: #121212; color: white; font-family: sans-serif; text-align: center; padding: 40px 20px; }
+        button { background: #0A84FF; color: white; border: none; padding: 15px 25px; font-size: 18px; border-radius: 10px; width: 100%; margin-top: 20px; }
+        #log { background: #222; margin-top: 20px; padding: 15px; border-radius: 8px; font-family: monospace; text-align: left; font-size: 12px; }
     </style>
 </head>
 <body>
-    <h1>Teverun Dash</h1>
-    <button id="connectBtn">Connecter la Trottinette</button>
-    
-    <div class="card" id="dashboard" style="display:none;">
-        <p>Vitesse</p>
-        <div class="metric">-- km/h</div>
-        <p>Batterie</p>
-        <div class="metric">-- %</div>
-        <p style="color: #4CAF50; margin-top: 20px;">✓ Connecté à la Teverun</p>
-    </div>
+    <h2>Test Scan Bluetooth</h2>
+    <button id="scanBtn">Lancer le Scan Tout Appareil</button>
+    <div id="log">Status: En attente...</div>
 
     <script>
-        const connectBtn = document.getElementById('connectBtn');
-        const dashboard = document.getElementById('dashboard');
+        const scanBtn = document.getElementById('scanBtn');
+        const log = document.getElementById('log');
 
-        connectBtn.addEventListener('click', async () => {
+        function print(msg) {
+            log.innerHTML += "<br>> " + msg;
+        }
+
+        scanBtn.addEventListener('click', async () => {
+            log.innerHTML = "Status: Scan en cours...";
             try {
-                // Mode scan ouvert : détecte TOUS les périphériques Bluetooth autour
+                print("Demande d'accès Bluetooth...");
                 const device = await navigator.bluetooth.requestDevice({
-                    acceptAllDevices: true,
-                    optionalServices: ['49535343-fe7d-4ae5-8fa9-9fafd205e455']
+                    acceptAllDevices: true
                 });
 
+                print("Appareil sélectionné : " + device.name + " (" + device.id + ")");
+                print("Tentative de connexion GATT...");
+                
                 const server = await device.gatt.connect();
-                
-                // Succès de la connexion
-                connectBtn.style.display = 'none';
-                dashboard.style.display = 'block';
-                
+                print("✓ CONNECTÉ AVEC SUCCÈS !");
+
             } catch (error) {
-                alert('Erreur : ' + error);
+                print("Erreur : " + error.message);
             }
         });
     </script>
