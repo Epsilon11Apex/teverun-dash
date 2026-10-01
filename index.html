@@ -16,7 +16,7 @@
         .section-title { font-size: 16px; text-align: left; margin: 15px 0 8px 5px; color: #0A84FF; font-weight: bold; }
         .led-btns { display: flex; gap: 8px; }
         .btn-led { flex: 1; padding: 12px; border: none; border-radius: 10px; color: white; font-weight: bold; font-size: 14px; cursor: pointer; }
-        #log { background: #111; color: #00ff66; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 10px; text-align: left; max-height: 120px; overflow-y: auto; margin-top: 15px; word-break: break-all; }
+        #log { background: #111; color: #00ff66; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 10px; text-align: left; max-height: 140px; overflow-y: auto; margin-top: 15px; word-break: break-all; }
     </style>
 </head>
 <body>
@@ -94,6 +94,7 @@
 
             const frameType = data[1];
 
+            // Trame 0x71 / 0x72 : Télémétrie Moteurs / Contrôleurs
             if (frameType === 0x71 || frameType === 0x72) {
                 if (data[3] !== undefined) {
                     document.getElementById('speed').innerText = data[3];
@@ -107,15 +108,16 @@
                     }
                 }
 
-                // Tension sans filtrage restrictif (maintient de l'échelle à / 10)
+                // Tension corrigée (Lecture sur 16 bits divisée par 10)
                 if (data[8] !== undefined && data[9] !== undefined) {
                     const rawVolt = (data[8] << 8) | data[9];
-                    if (rawVolt > 100) {
+                    if (rawVolt > 300 && rawVolt < 1000) {
                         document.getElementById('voltage').innerText = (rawVolt / 10).toFixed(1);
                     }
                 }
             }
 
+            // Trame 0x73 : Batterie & Ampérage
             if (frameType === 0x73) {
                 if (data[13] !== undefined && data[13] <= 100) {
                     document.getElementById('battery').innerText = data[13];
@@ -158,7 +160,7 @@
 
                 document.getElementById('connectBtn').style.display = 'none';
                 document.getElementById('dash').style.display = 'block';
-                log('✓ CONNECTÉ ! ' + allWriteChars.length + ' canal(e)s d\'écriture trouvé(e)s.');
+                log('✓ CONNECTÉ ! Prêt.');
 
                 const pollPacket = new Uint8Array([0xAA, 0x55, 0x01, 0x01, 0x00, 0x02]);
 
@@ -171,23 +173,42 @@
             }
         });
 
-        // Envoi broad-spectrum sur tous les canaux avec 2 formats de paquets LED Teverun
+        // Test des 5 trames LED Teverun/Minimotors
         async function sendLedColor(r, g, b) {
-            if (allWriteChars.length === 0) return;
+            if (allWriteChars.length === 0) {
+                log("Erreur : Pas de canal d'écriture.");
+                return;
+            }
+
+            const calcSum = (arr) => arr.reduce((acc, v) => acc + v, 0) & 0xFF;
+
+            // Variante 1: Standard Teverun App
+            const v1_body = [0x07, 0x10, 0x03, r, g, b, 0x01];
+            const v1 = new Uint8Array([0xAA, 0x55, ...v1_body, calcSum(v1_body)]);
+
+            // Variante 2: Minimotors / TFT RGB
+            const v2_body = [0x06, 0x08, 0x01, r, g, b, 0xFF];
+            const v2 = new Uint8Array([0xA5, 0x5A, ...v2_body, calcSum(v2_body)]);
+
+            // Variante 3: Light Controller Board Direct
+            const v3_body = [0x05, 0x03, r, g, b];
+            const v3 = new Uint8Array([0x55, 0xAA, ...v3_body, calcSum(v3_body)]);
+
+            // Variante 4: Frame 0x0A Mode
+            const v4_body = [0x0A, 0x03, r, g, b, 0x00];
+            const v4 = new Uint8Array([0xAA, 0x55, ...v4_body, calcSum(v4_body)]);
+
+            // Variante 5: Simple Raw RGB
+            const v5 = new Uint8Array([0x55, 0x00, 0x03, r, g, b, (r+g+b) & 0xFF]);
+
+            const packets = [v1, v2, v3, v4, v5];
+
+            log(`--> Test LED (${r},${g},${b}) - 5 paquets...`);
             
-            // Format 1 : Teverun App Packet (0xAA 0x55 0x06 0x03 ...)
-            const p1Header = [0xAA, 0x55, 0x06, 0x03, 0x01, r, g, b];
-            const p1Sum = p1Header.reduce((acc, val) => acc + val, 0) & 0xFF;
-            const p1 = new Uint8Array([...p1Header, p1Sum]);
-
-            // Format 2 : Direct LED Controller (0x55 0x00 0x0A ...)
-            const p2Header = [0x55, 0x00, 0x0A, 0x03, r, g, b];
-            const p2Sum = p2Header.reduce((acc, val) => acc + val, 0) & 0xFF;
-            const p2 = new Uint8Array([...p2Header, p2Sum]);
-
-            await writeToAll(p1);
-            await writeToAll(p2);
-            log(`LED broadcast : R=${r} G=${g} B=${b}`);
+            for (let i = 0; i < packets.length; i++) {
+                await writeToAll(packets[i]);
+            }
+            log("✓ Paquets LED envoyés.");
         }
     </script>
 </body>
