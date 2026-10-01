@@ -10,7 +10,7 @@
         .card { background: #1c1c1e; padding: 20px; border-radius: 16px; margin: 15px auto; max-width: 350px; }
         .value { font-size: 48px; font-weight: bold; color: #30d158; }
         .unit { font-size: 18px; color: #8e8e93; }
-        #log { background: #000; color: #00ff66; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 11px; text-align: left; max-height: 200px; overflow-y: auto; margin-top: 15px; word-break: break-all; }
+        #log { background: #000; color: #00ff66; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 11px; text-align: left; max-height: 180px; overflow-y: auto; margin-top: 15px; word-break: break-all; }
     </style>
 </head>
 <body>
@@ -30,7 +30,7 @@
         </div>
     </div>
 
-    <div id="log">> Prêt pour l'auto-détection...</div>
+    <div id="log">> Prêt pour l'envoi de trames...</div>
 
     <script>
         const SERVICE_UUID = '49535343-fe7d-4ae5-8fa9-9fafd205e455';
@@ -43,7 +43,7 @@
 
         document.getElementById('connectBtn').addEventListener('click', async () => {
             try {
-                log('Recherche de la Teverun...');
+                log('Recherche Teverun...');
                 const device = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
                     optionalServices: [SERVICE_UUID]
@@ -52,50 +52,57 @@
                 log('Connexion GATT...');
                 const server = await device.gatt.connect();
 
-                log('Récupération du service ' + SERVICE_UUID + '...');
+                log('Obtention du service...');
                 const service = await server.getPrimaryService(SERVICE_UUID);
 
-                log('Scan des caractéristiques...');
                 const characteristics = await service.getCharacteristics();
-                log('Nombre de caractéristiques : ' + characteristics.length);
-
                 let notifyChar = null;
+                let writeChar = null;
 
                 for (const char of characteristics) {
-                    const props = [];
-                    if (char.properties.read) props.push('READ');
-                    if (char.properties.write) props.push('WRITE');
-                    if (char.properties.writeWithoutResponse) props.push('WRITE_NO_RESP');
-                    if (char.properties.notify) props.push('NOTIFY');
-                    if (char.properties.indicate) props.push('INDICATE');
-
-                    log('Carac: ' + char.uuid.substring(0, 8) + '... [' + props.join(', ') + ']');
-
                     if (char.properties.notify || char.properties.indicate) {
                         notifyChar = char;
                     }
+                    if (char.properties.write || char.properties.writeWithoutResponse) {
+                        writeChar = char;
+                    }
                 }
 
-                if (notifyChar) {
-                    log('Abonnement à ' + notifyChar.uuid.substring(0, 8) + '...');
+                if (notifyChar && writeChar) {
+                    log('Abonnement écoute...');
                     await notifyChar.startNotifications();
                     
                     notifyChar.addEventListener('characteristicvaluechanged', (e) => {
                         const data = new Uint8Array(e.target.value.buffer);
                         const hex = Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' ');
-                        log('DONNÉES: ' + hex);
+                        log('REÇU: ' + hex);
                         
-                        if (data.length >= 5) {
-                            document.getElementById('speed').innerText = data[3] || 0;
-                            document.getElementById('battery').innerText = data[4] || '--';
+                        // Décodage basique de trame Teverun
+                        if (data.length >= 6) {
+                            // Selon le protocole, la vitesse et la batterie se trouvent souvent dans les octets 3 à 6
+                            document.getElementById('speed').innerText = data[3] !== undefined ? data[3] : 0;
+                            document.getElementById('battery').innerText = data[4] !== undefined ? data[4] : '--';
                         }
                     });
 
                     document.getElementById('connectBtn').style.display = 'none';
                     document.getElementById('dash').style.display = 'block';
-                    log('✓ CONNECTÉ ET ÉCOUTE ACTIVE !');
+                    log('✓ ÉCOUTE ACTIVE ! Envoi des pings...');
+
+                    // Trame standard de requête d'état Teverun (Poll Request)
+                    const pollPacket = new Uint8Array([0xAA, 0x55, 0x01, 0x01, 0x00, 0x02]);
+
+                    // Envoi en boucle toutes les 1000ms
+                    setInterval(async () => {
+                        try {
+                            await writeChar.writeValue(pollPacket);
+                        } catch (err) {
+                            // Ignore les erreurs d'écriture temporaires
+                        }
+                    }, 1000);
+
                 } else {
-                    log('ATTENTION: Aucune caractéristique de notification trouvée.');
+                    log('Erreur: Caractéristiques écriture/lecture introuvables.');
                 }
 
             } catch (err) {
