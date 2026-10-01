@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teverun Pro Dash & LED</title>
+    <title>Teverun Dash Pro</title>
     <style>
         body { background: #000; color: #fff; font-family: -apple-system, sans-serif; text-align: center; padding: 15px; margin: 0; }
         .btn { background: #0A84FF; color: white; border: none; padding: 16px; font-size: 18px; border-radius: 14px; width: 100%; font-weight: bold; margin-bottom: 15px; }
@@ -13,13 +13,10 @@
         .title { font-size: 12px; color: #8e8e93; text-transform: uppercase; font-weight: 600; }
         .value { font-size: 36px; font-weight: bold; color: #30d158; margin: 5px 0; }
         .unit { font-size: 14px; color: #8e8e93; }
-        
-        /* Control Section LED */
         .section-title { font-size: 16px; text-align: left; margin: 15px 0 8px 5px; color: #0A84FF; font-weight: bold; }
         .led-btns { display: flex; gap: 8px; }
         .btn-led { flex: 1; padding: 12px; border: none; border-radius: 10px; color: white; font-weight: bold; font-size: 14px; cursor: pointer; }
-        
-        #log { background: #111; color: #00ff66; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 10px; text-align: left; max-height: 120px; overflow-y: auto; margin-top: 15px; word-break: break-all; }
+        #log { background: #111; color: #00ff66; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 10px; text-align: left; max-height: 140px; overflow-y: auto; margin-top: 15px; word-break: break-all; }
     </style>
 </head>
 <body>
@@ -61,10 +58,10 @@
 
         <div class="section-title">Contrôle LED Teverun</div>
         <div class="led-btns">
-            <button class="btn-led" style="background: #ff3b30;" onclick="setLedColor(0xFF, 0x00, 0x00)">Rouge</button>
-            <button class="btn-led" style="background: #30d158;" onclick="setLedColor(0x00, 0xFF, 0x00)">Vert</button>
-            <button class="btn-led" style="background: #0a84ff;" onclick="setLedColor(0x00, 0x00, 0xFF)">Bleu</button>
-            <button class="btn-led" style="background: #bf5af2;" onclick="setLedColor(0xFF, 0x00, 0xFF)">Violet</button>
+            <button class="btn-led" style="background: #ff3b30;" onclick="sendLedCmd(1)">Rouge</button>
+            <button class="btn-led" style="background: #30d158;" onclick="sendLedCmd(2)">Vert</button>
+            <button class="btn-led" style="background: #0a84ff;" onclick="sendLedCmd(3)">Bleu</button>
+            <button class="btn-led" style="background: #bf5af2;" onclick="sendLedCmd(4)">Violet</button>
         </div>
     </div>
 
@@ -104,56 +101,57 @@
                     
                     notifyChar.addEventListener('characteristicvaluechanged', (e) => {
                         const data = new Uint8Array(e.target.value.buffer);
-                        
-                        // Log brut pour le reverse engineering
                         const hex = Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' ');
-                        log('TR : ' + hex);
+                        log('REÇU : ' + hex);
 
-                        // Décodage des offsets Teverun / Minimotors
-                        if (data.length >= 8) {
-                            document.getElementById('speed').innerText = data[3] || 0;
-                            
-                            // Tension (ex: 672 = 67.2V)
-                            if (data[4] && data[5]) {
-                                const volts = ((data[4] << 8) | data[5]) / 10;
-                                document.getElementById('voltage').innerText = volts.toFixed(1);
-                            }
-
-                            document.getElementById('battery').innerText = data[6] || '--';
-                            
-                            // Température (°C)
-                            if (data[7]) {
-                                document.getElementById('temp').innerText = data[7];
-                            }
+                        if (data.length >= 6) {
+                            document.getElementById('speed').innerText = data[3] !== undefined ? data[3] : 0;
+                            document.getElementById('battery').innerText = data[4] !== undefined ? data[4] : '--';
+                            if (data[5]) document.getElementById('voltage').innerText = (data[5] / 10).toFixed(1);
+                            if (data[6]) document.getElementById('temp').innerText = data[6];
                         }
                     });
 
                     document.getElementById('connectBtn').style.display = 'none';
                     document.getElementById('dash').style.display = 'block';
-                    log('✓ CONNECTÉ ! Télémétrie active.');
+                    log('✓ CONNECTÉ ! Test des pings...');
 
-                    // Requete régulière d'état
-                    const pollPacket = new Uint8Array([0xAA, 0x55, 0x01, 0x01, 0x00, 0x02]);
+                    // Sequence de pings alternés
+                    const pings = [
+                        new Uint8Array([0xAA, 0x55, 0x01, 0x01, 0x00, 0x02]),
+                        new Uint8Array([0x02, 0x00, 0x01, 0x00, 0x03]),
+                        new Uint8Array([0xA5, 0x5A, 0x01, 0x01, 0x02])
+                    ];
+
+                    let pIdx = 0;
                     setInterval(async () => {
-                        try { if (writeChar) await writeChar.writeValue(pollPacket); } catch(e){}
-                    }, 800);
-
+                        try {
+                            if (writeChar) {
+                                await writeChar.writeValue(pings[pIdx % pings.length]);
+                                pIdx++;
+                            }
+                        } catch(e){}
+                    }, 1000);
                 }
             } catch (err) {
                 log('ERREUR : ' + err.message);
             }
         });
 
-        // Envoi de commande LED RGB
-        async function setLedColor(r, g, b) {
+        async function sendLedCmd(mode) {
             if (!writeChar) return;
             try {
-                // Trame standard de commande LED Teverun (Header + Mode LED + RGB + Checksum)
-                const packet = new Uint8Array([0xAA, 0x55, 0x0A, 0x03, r, g, b, 0x00, 0x00]);
-                await writeChar.writeValue(packet);
-                log(`LED envoyées : R=${r} G=${g} B=${b}`);
+                // Commandes LED Teverun génériques
+                const cmds = {
+                    1: new Uint8Array([0xAA, 0x55, 0x06, 0x01, 0xFF, 0x00, 0x00, 0x01]),
+                    2: new Uint8Array([0xAA, 0x55, 0x06, 0x01, 0x00, 0xFF, 0x00, 0x01]),
+                    3: new Uint8Array([0xAA, 0x55, 0x06, 0x01, 0x00, 0x00, 0xFF, 0x01]),
+                    4: new Uint8Array([0xAA, 0x55, 0x06, 0x01, 0xFF, 0x00, 0xFF, 0x01])
+                };
+                await writeChar.writeValue(cmds[mode]);
+                log('LED envoyée mode ' + mode);
             } catch(e) {
-                log('Erreur envoi LED: ' + e.message);
+                log('Erreur LED: ' + e.message);
             }
         }
     </script>
