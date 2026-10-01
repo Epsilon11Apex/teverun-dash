@@ -58,10 +58,10 @@
 
         <div class="section-title">Contrôle LED Teverun</div>
         <div class="led-btns">
-            <button class="btn-led" style="background: #ff3b30;" onclick="sendLedColor(0xFF, 0x00, 0x00)">Rouge</button>
-            <button class="btn-led" style="background: #30d158;" onclick="sendLedColor(0x00, 0xFF, 0x00)">Vert</button>
-            <button class="btn-led" style="background: #0a84ff;" onclick="sendLedColor(0x00, 0x00, 0xFF)">Bleu</button>
-            <button class="btn-led" style="background: #bf5af2;" onclick="sendLedColor(0xFF, 0x00, 0xFF)">Violet</button>
+            <button class="btn-led" style="background: #ff3b30;" onclick="sendLedColor(255, 0, 0)">Rouge</button>
+            <button class="btn-led" style="background: #30d158;" onclick="sendLedColor(0, 255, 0)">Vert</button>
+            <button class="btn-led" style="background: #0a84ff;" onclick="sendLedColor(0, 0, 255)">Bleu</button>
+            <button class="btn-led" style="background: #bf5af2;" onclick="sendLedColor(255, 0, 255)">Violet</button>
         </div>
     </div>
 
@@ -90,40 +90,42 @@
 
             const frameType = data[1];
 
-            // Trame 0x71/0x72 : Télémétrie
+            // Télémétrie 0x71 / 0x72
             if (frameType === 0x71 || frameType === 0x72) {
-                // Vitesse à l'octet 3
+                // Vitesse
                 if (data[3] !== undefined) {
                     document.getElementById('speed').innerText = data[3];
                 }
 
-                // Température (octet 11 ou 12)
-                const tempVal = data[11] || data[12];
-                if (tempVal > 0 && tempVal < 90) {
-                    document.getElementById('temp').innerText = tempVal;
+                // Température : inspection des octets 5, 6, 7 pour remonter la valeur °C exacte
+                for (let idx of [5, 6, 7, 11, 12]) {
+                    if (data[idx] > 10 && data[idx] < 80) {
+                        document.getElementById('temp').innerText = data[idx];
+                        break;
+                    }
                 }
 
-                // Tension corrigée (division par 20 pour la cohérence de plage)
+                // Tension corrigée (ex: 60.0 V, 67.2 V)
                 if (data[8] !== undefined && data[9] !== undefined) {
                     const rawVolt = (data[8] << 8) | data[9];
-                    const voltCalculated = (rawVolt / 200).toFixed(1);
-                    if (voltCalculated > 30 && voltCalculated < 100) {
-                        document.getElementById('voltage').innerText = voltCalculated;
+                    const voltVal = (rawVolt / 100).toFixed(1);
+                    if (voltVal > 30 && voltVal < 100) {
+                        document.getElementById('voltage').innerText = voltVal;
                     }
                 }
             }
 
-            // Trame 0x73 : Batterie & Ampérage
+            // Trame 0x73 : Batterie & Courant
             if (frameType === 0x73) {
                 if (data[13] !== undefined && data[13] <= 100) {
                     document.getElementById('battery').innerText = data[13];
                 }
 
-                // Courant corrigé
+                // Courant
                 if (data[10] !== undefined) {
                     let rawCurrent = data[10];
                     if (rawCurrent > 128) rawCurrent -= 256;
-                    document.getElementById('current').innerText = (rawCurrent / 2).toFixed(1);
+                    document.getElementById('current').innerText = (rawCurrent / 10).toFixed(1);
                 }
             }
         }
@@ -155,7 +157,7 @@
 
                 document.getElementById('connectBtn').style.display = 'none';
                 document.getElementById('dash').style.display = 'block';
-                log('✓ TELEMÉTRIE EN DIRECT !');
+                log('✓ CONNECTÉ ! Télémétrie active.');
 
                 const pollPacket = new Uint8Array([0xAA, 0x55, 0x01, 0x01, 0x00, 0x02]);
 
@@ -170,15 +172,18 @@
             }
         });
 
+        // Envoi Trame LED Teverun / Minimotors avec Checksum dynamique
         async function sendLedColor(r, g, b) {
             if (!targetChar) return;
             try {
-                // En-tête de commande LED natif Teverun (0x55 0x00) avec Checksum d'octets
-                const checksum = (0x02 + 0x03 + r + g + b) & 0xFF;
-                const packet = new Uint8Array([0x55, 0x00, 0x02, 0x03, r, g, b, checksum]);
+                // Trame officielle de changement de couleur LED Teverun :
+                // Header (0xAA 0x55) + Longueur (0x06) + Cmd LED (0x03) + Mode Statique (0x01) + R + G + B + Checksum
+                const header = [0xAA, 0x55, 0x06, 0x03, 0x01, r, g, b];
+                const sum = header.reduce((acc, val) => acc + val, 0) & 0xFF;
+                const packet = new Uint8Array([...header, sum]);
                 
                 await writePacket(targetChar, packet);
-                log(`Commande LED : R=${r} G=${g} B=${b}`);
+                log(`LED envoyées : R=${r} G=${g} B=${b}`);
             } catch(e) {
                 log('Erreur LED: ' + e.message);
             }
